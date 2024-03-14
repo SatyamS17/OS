@@ -35,6 +35,8 @@ _tss:
 tss_bottom:
 
     .align  16
+
+
 gdt:
 _gdt:
 
@@ -75,6 +77,12 @@ gdt_ptr:
     .quad 0x00CFF2000000FFFF
 
     # Set up an entry for TSS
+
+gdt_desc:
+    .word gdt_bottom - gdt - 1
+    .long gdt
+    .align 16
+
 tss_desc_ptr:
     .quad 0
 
