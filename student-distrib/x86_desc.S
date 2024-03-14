@@ -12,6 +12,8 @@
 .globl gdt_ptr
 .globl idt_desc_ptr, idt
 
+.globl gdt_desc_ptr
+
 .align 4
 
 
@@ -78,11 +80,6 @@ gdt_ptr:
 
     # Set up an entry for TSS
 
-gdt_desc:
-    .word gdt_bottom - gdt - 1
-    .long gdt
-    .align 16
-
 tss_desc_ptr:
     .quad 0
 
@@ -93,6 +90,10 @@ ldt_desc_ptr:
 gdt_bottom:
 
     .align 16
+
+gdt_desc_ptr:
+    .word gdt_bottom - gdt - 1
+    .long gdt
 ldt:
     .rept 4
     .quad 0
