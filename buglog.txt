@@ -1,1 +1,7 @@
 Checkpoint 1:
+
+1) 
+
+Bug: The code would continue to bootloop even though gdt was initalized correctly
+
+Fix: Had to comment out the function that would run tests
