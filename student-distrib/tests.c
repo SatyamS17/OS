@@ -29,7 +29,7 @@ static inline void assertion_failure(){
  * Coverage: Load IDT, IDT definition
  * Files: x86_desc.h/S
  */
-int idt_test(){
+int idt_test() {
 	TEST_HEADER;
 
 	int i;
@@ -45,6 +45,24 @@ int idt_test(){
 	return result;
 }
 
+/* Div by Zero Test
+ * 
+ * Performs a division by zero to test exception handler
+ * Inputs: None
+ * Outputs: None
+ * Side Effects: Should print exception
+ * Coverage: Load IDT, IDT definition
+ * Files: idt.h/c, exceptions.h/c
+ */
+int div_by_zero() {
+	TEST_HEADER;
+	int a = 0;
+	int b;
+	b = 1 / a;
+
+	return PASS;
+}
+
 // add more tests here
 
 /* Checkpoint 2 tests */
@@ -56,5 +74,6 @@ int idt_test(){
 /* Test suite entry point */
 void launch_tests(){
 	TEST_OUTPUT("idt_test", idt_test());
+	TEST_OUTPUT("div_by_zero", div_by_zero());
 	// launch your tests here
 }
