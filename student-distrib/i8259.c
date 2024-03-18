@@ -11,16 +11,61 @@ uint8_t slave_mask;  /* IRQs 8-15 */
 
 /* Initialize the 8259 PIC */
 void i8259_init(void) {
+    /*mask out all interrupts*/
+    master_mask = 0xFF;
+    slave_mask = 0xFF;
+    outb(master_mask, MASTER_8259_PORT + 1); /*+1 to access data*/
+    outb(slave_mask, SLAVE_8259_PORT + 1); /*+1 to access data*/
+
+    /*initialize the PIC*/
+    outb(ICW1, MASTER_8259_PORT);
+    outb(ICW2_MASTER, MASTER_8259_PORT + 1);
+    outb(ICW3_MASTER, MASTER_8259_PORT + 1);
+    outb(ICW4, MASTER_8259_PORT + 1);
+
+    outb(ICW1, SLAVE_8259_PORT);
+    outb(ICW2_SLAVE, SLAVE_8259_PORT + 1);
+    outb(ICW3_SLAVE, SLAVE_8259_PORT + 1);
+    outb(ICW4, SLAVE_8259_PORT + 1);
+
+    enable_irq(2); /*slave on irq2 of master*/
 }
 
 /* Enable (unmask) the specified IRQ */
 void enable_irq(uint32_t irq_num) {
+    if(irq_num < 8){ /*if master PIC*/
+        master_mask &= ~(1 << irq_num);
+        outb(master_mask, MASTER_8259_PORT + 1);
+    }else if(irq_num > 15){/*15 is max num for interrupts*/
+        return;
+    }else{
+        slave_mask &= ~(1 << (irq_num - 8));
+        outb(slave_mask, SLAVE_8259_PORT + 1);
+    }
 }
 
 /* Disable (mask) the specified IRQ */
 void disable_irq(uint32_t irq_num) {
+    if(irq_num < 8){ /*if master PIC*/
+        master_mask |= (1 << irq_num);
+        outb(master_mask, MASTER_8259_PORT + 1);
+    }else if(irq_num > 15){/*15 is max num for interrupts*/
+        return;
+    }
+    else{
+        slave_mask |= (1 << (irq_num - 8));
+        outb(slave_mask, SLAVE_8259_PORT + 1);
+    }
 }
 
 /* Send end-of-interrupt signal for the specified IRQ */
 void send_eoi(uint32_t irq_num) {
+    if(irq_num < 8){ /*if master PIC*/
+        outb((EOI | irq_num), MASTER_8259_PORT);
+    }else if(irq_num > 15){/*15 is max num for interrupts*/
+        return;
+    }else{
+        outb((EOI | (irq_num - 8)), SLAVE_8259_PORT);
+        outb(EOI | 2, MASTER_8259_PORT); /*also mask master port that holds slave*/
+    }
 }
