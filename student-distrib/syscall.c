@@ -2,6 +2,6 @@
 
 #include "lib.h"
 
-void syscall_handler(void) {
+void syscall_handler_base(void) {
     printf("system call handler called\n");
 }

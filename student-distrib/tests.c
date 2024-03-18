@@ -63,7 +63,21 @@ int div_by_zero() {
 	return PASS;
 }
 
-// add more tests here
+/* Invalid Opcode Test
+ * 
+ * Performs an invlid opcode to test exception handler
+ * Inputs: None
+ * Outputs: None
+ * Side Effects: Should print exception
+ * Coverage: Load IDT, IDT definition
+ * Files: idt.h/c, exceptions.h/c
+ */
+int invalid_opcode() {
+	TEST_HEADER;
+	asm("ud2");
+	
+	return PASS;
+}
 
 /* Checkpoint 2 tests */
 /* Checkpoint 3 tests */
@@ -75,5 +89,5 @@ int div_by_zero() {
 void launch_tests(){
 	TEST_OUTPUT("idt_test", idt_test());
 	TEST_OUTPUT("div_by_zero", div_by_zero());
-	// launch your tests here
+	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
 }

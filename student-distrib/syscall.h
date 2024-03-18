@@ -6,5 +6,6 @@
 
 /* Handler for system call interrupt. */
 extern void syscall_handler(void);
+extern void syscall_handler_base(void);
 
 #endif  /* _SYSCALL_H */

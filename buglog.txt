@@ -5,3 +5,21 @@ Checkpoint 1:
 Bug: The code would continue to bootloop even though gdt was initalized correctly
 
 Fix: Had to comment out the function that would run tests
+
+2)
+
+Bug: RTC and keyboard interrupt handlers only ran once
+
+Fix: Needed to have assembly linkage around handlers to properly call `iret`
+
+3)
+
+Bug: RTC interrupt handler only ran once still
+
+Fix: Didn't fully read RTC documentation, forgot to read from C register in handler
+
+4)
+
+Bug: EOI to a device on slave PIC wasn't working
+
+Fix: Forgot to send EOI to master PIC as well in `send_eoi` function

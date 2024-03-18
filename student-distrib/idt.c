@@ -1,6 +1,8 @@
 #include "idt.h"
 
 #include "exceptions.h"
+#include "keyboard.h"
+#include "rtc.h"
 #include "syscall.h"
 #include "x86_desc.h"
 
@@ -22,7 +24,7 @@ void init_idt() {
         idt[i].reserved0 = 0;
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
-        idt[i].reserved3 = 0;
+        idt[i].reserved3 = 1;
         idt[i].reserved4 = 0;
     }
 
@@ -50,7 +52,15 @@ void init_idt() {
     SET_IDT_ENTRY(idt[18], machine_check_exception_handler);
     SET_IDT_ENTRY(idt[19], simd_floating_point_exception_handler);
 
-    idt[SYSCALL_HANDLER_VEC].dpl = 3;      /* allow user calls   */
     idt[SYSCALL_HANDLER_VEC].present = 1;  /* mark entry present */
+    idt[SYSCALL_HANDLER_VEC].dpl = 3;      /* allow user calls   */
     SET_IDT_ENTRY(idt[SYSCALL_HANDLER_VEC], syscall_handler);
+
+    idt[KEYBOARD_HANDLER_VEC].present = 1;
+    idt[KEYBOARD_HANDLER_VEC].reserved3 = 0;
+    SET_IDT_ENTRY(idt[KEYBOARD_HANDLER_VEC], keyboard_handler);
+
+    idt[RTC_HANDLER_VEC].present = 1;
+    idt[RTC_HANDLER_VEC].reserved3 = 0;
+    SET_IDT_ENTRY(idt[RTC_HANDLER_VEC], rtc_handler);
 }
