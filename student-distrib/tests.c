@@ -144,7 +144,7 @@ void launch_tests()
 	TEST_OUTPUT("idt_test", idt_test());
 	// TEST_OUTPUT("div_by_zero", div_by_zero());
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
-	// TEST_OUTPUT("paging", page_fault());
+	// TEST_OUTPUT("null_pointer_access", null_pointer_access());
 	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
 	TEST_OUTPUT("video_memory_access", video_memory_access());
 }
