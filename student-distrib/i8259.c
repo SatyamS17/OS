@@ -84,3 +84,4 @@ void send_eoi(uint32_t irq_num) {
         outb(EOI | 2, MASTER_8259_PORT); /*also mask master port that holds slave*/
     }
 }
+

@@ -6,17 +6,16 @@
 #define FAIL 0
 
 /* format these macros as you see fit */
-#define TEST_HEADER 	\
+#define TEST_HEADER \
 	printf("[TEST %s] Running %s at %s:%d\n", __FUNCTION__, __FUNCTION__, __FILE__, __LINE__)
-#define TEST_OUTPUT(name, result)	\
+#define TEST_OUTPUT(name, result) \
 	printf("[TEST %s] Result = %s\n", name, (result) ? "PASS" : "FAIL");
 
-static inline void assertion_failure(){
+static inline void assertion_failure() {
 	/* Use exception #15 for assertions, otherwise
 	   reserved by Intel */
 	asm volatile("int $15");
 }
-
 
 /* Checkpoint 1 tests */
 
@@ -49,7 +48,7 @@ int idt_test() {
 }
 
 /* Div by Zero Test
- * 
+ *
  * Performs a division by zero to test exception handler
  * Inputs: None
  * Outputs: None
@@ -82,6 +81,57 @@ int invalid_opcode() {
 	return FAIL;
 }
 
+/* Null Pointer Access Test
+ * 
+ * Performs a null pointer access to test page fault exception handler
+ * Inputs: None
+ * Outputs: None
+ * Side Effects: Should print exception
+ * Coverage: Load IDT, IDT definition, Paging
+ * Files: idt.h/c, exceptions.h/c, paging.h/c
+ */
+int null_pointer_access() {
+	TEST_HEADER;
+	int *a = 0;
+	int p = *a;
+	(void) p;
+	return FAIL;
+}
+
+/* Kernel Space Memory Access
+ * 
+ * Performs a valid memory access in kernel space
+ * Inputs: None
+ * Outputs: PASS, blue screen if fail
+ * Side Effects: None
+ * Coverage: Paging
+ * Files: paging.h/c
+ */
+int kernel_space_memory_access() {
+	TEST_HEADER;
+	int *a = (int*) 0x400000;
+	int p = *a;
+	(void) p;
+	return PASS;
+}
+
+/* Video Memory Access
+ * 
+ * Performs a valid memory access in video memory
+ * Inputs: None
+ * Outputs: PASS, blue screen if fail
+ * Side Effects: None
+ * Coverage: Paging
+ * Files: paging.h/c
+ */
+int video_memory_access() {
+	TEST_HEADER;
+	int *a = (int*) 0xB8000;
+	int p = *a;
+	(void) p;
+	return PASS;
+}
+
 /* Checkpoint 2 tests */
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
@@ -89,8 +139,12 @@ int invalid_opcode() {
 
 
 /* Test suite entry point */
-void launch_tests(){
+void launch_tests()
+{
 	TEST_OUTPUT("idt_test", idt_test());
 	// TEST_OUTPUT("div_by_zero", div_by_zero());
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
+	// TEST_OUTPUT("paging", page_fault());
+	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
+	TEST_OUTPUT("video_memory_access", video_memory_access());
 }

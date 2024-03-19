@@ -22,6 +22,12 @@
 /* Number of vectors in the interrupt descriptor table (IDT) */
 #define NUM_VEC     256
 
+/* Number of pages that can be stored in a 4KB directory*/
+#define PAGE_NUM            1024
+
+/* Number of bits in a 4KB */
+#define FOURKB_BITS         (PAGE_NUM * 4)
+
 #ifndef ASM
 
 /* This structure is used to load descriptor base registers
@@ -167,6 +173,39 @@ typedef union idt_desc_t {
 extern idt_desc_t idt[NUM_VEC];
 /* The descriptor used to load the IDTR */
 extern x86_desc_t idt_desc_ptr;
+
+/* Both of the values below should be aligned to 4KB according to documentation*/
+typedef struct __attribute__ ((packed)) page_directory_t {
+    uint32_t present            : 1;
+    uint32_t read_write         : 1;
+    uint32_t user_supervisor    : 1;
+    uint32_t write_through      : 1;
+    uint32_t cache_disabled     : 1;
+    uint32_t accessed           : 1;
+    uint32_t reserved           : 1;
+    uint32_t page_size          : 1;
+    uint32_t global_page        : 1;
+    uint32_t available          : 3;
+    uint32_t page_table_address : 20;
+} page_directory_t;
+
+typedef struct __attribute__ ((packed)) page_table_t{
+    uint32_t present            : 1;
+    uint32_t read_write         : 1;
+    uint32_t user_supervisor    : 1;
+    uint32_t write_through      : 1;
+    uint32_t cache_disabled     : 1;
+    uint32_t accessed           : 1;
+    uint32_t dirty              : 1;
+    uint32_t page_attribute     : 1;
+    uint32_t global_page        : 1;
+    uint32_t available          : 3;
+    uint32_t base_address       : 20;
+} page_table_t;
+
+page_directory_t page_dir[PAGE_NUM] __attribute__ ((aligned (FOURKB_BITS)));
+page_table_t page_table[PAGE_NUM] __attribute__ ((aligned (FOURKB_BITS)));
+
 
 /* Sets runtime parameters for an IDT entry */
 #define SET_IDT_ENTRY(str, handler)                              \
