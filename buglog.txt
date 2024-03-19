@@ -23,3 +23,15 @@ Fix: Didn't fully read RTC documentation, forgot to read from C register in hand
 Bug: EOI to a device on slave PIC wasn't working
 
 Fix: Forgot to send EOI to master PIC as well in `send_eoi` function
+
+5)
+
+Bug: Bootlooping on devel
+
+Fix: Missing paranthesis around definition
+
+6)
+
+Bug: Print statements crashed devel/info mem only showing one entry
+
+Fix: Had to enable the page table for video memory
