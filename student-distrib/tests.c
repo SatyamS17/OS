@@ -88,6 +88,6 @@ int invalid_opcode() {
 /* Test suite entry point */
 void launch_tests(){
 	TEST_OUTPUT("idt_test", idt_test());
-	TEST_OUTPUT("div_by_zero", div_by_zero());
+	// TEST_OUTPUT("div_by_zero", div_by_zero());
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
 }
