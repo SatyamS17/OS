@@ -9,6 +9,11 @@
 /* number of Intel defined excpetion vectors in IDT (IA-32 manual pg 5-23 to 5-58) */
 #define NUM_EXCEPTIONS 20
 
+
+/* extern void rtc_init(void)
+ * Inputs: void
+ * Return Value: N/A
+ * Function: initializes IDT table*/
 void init_idt() {
     /* Load IDT address into idt_desc_ptr. */
     lidt(idt_desc_ptr);
