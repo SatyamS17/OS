@@ -1,5 +1,16 @@
 #include "paging.h"
 
+/* 
+ * init_preg
+ *   DESCRIPTION: Enables paging by setting appropriate bits in CR0, CR3, adn CR4.
+ *          
+ *   INPUTS: int page_dir address
+ *   OUTPUTS: none
+ *   RETURN VALUE: void
+ *   SIDE EFFECTS: Enables paging
+ *  
+ */
+
 extern void init_preg(int);
 
 /* 

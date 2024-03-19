@@ -174,7 +174,7 @@ extern idt_desc_t idt[NUM_VEC];
 /* The descriptor used to load the IDTR */
 extern x86_desc_t idt_desc_ptr;
 
-/* Both of the values below should be aligned to 4KB according to documentation*/
+/* Initialize Page directory */
 typedef struct __attribute__ ((packed)) page_directory_t {
     uint32_t present            : 1;
     uint32_t read_write         : 1;
@@ -189,6 +189,7 @@ typedef struct __attribute__ ((packed)) page_directory_t {
     uint32_t page_table_address : 20;
 } page_directory_t;
 
+/* Initialize Page table */
 typedef struct __attribute__ ((packed)) page_table_t{
     uint32_t present            : 1;
     uint32_t read_write         : 1;
@@ -203,6 +204,7 @@ typedef struct __attribute__ ((packed)) page_table_t{
     uint32_t base_address       : 20;
 } page_table_t;
 
+/* Declares page table and directory */
 page_directory_t page_dir[PAGE_NUM] __attribute__ ((aligned (FOURKB_BITS)));
 page_table_t page_table[PAGE_NUM] __attribute__ ((aligned (FOURKB_BITS)));
 
