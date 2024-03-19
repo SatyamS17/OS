@@ -28,6 +28,7 @@ void init_idt() {
         idt[i].reserved4 = 0;
     }
 
+    /* Enable interrupt vectors for exceptions. */
     for (i = 0; i < NUM_EXCEPTIONS; i++) {
         idt[i].present = 1;  /* mark entry present */
     }
@@ -52,15 +53,18 @@ void init_idt() {
     SET_IDT_ENTRY(idt[18], machine_check_exception_handler);
     SET_IDT_ENTRY(idt[19], simd_floating_point_exception_handler);
 
-    idt[SYSCALL_HANDLER_VEC].present = 1;  /* mark entry present */
-    idt[SYSCALL_HANDLER_VEC].dpl = 3;      /* allow user calls   */
+    /* Enable interrupt vector for system calls. */
+    idt[SYSCALL_HANDLER_VEC].present = 1;     /* mark entry present       */
+    idt[SYSCALL_HANDLER_VEC].dpl = 3;         /* allow user calls         */
     SET_IDT_ENTRY(idt[SYSCALL_HANDLER_VEC], syscall_handler);
 
-    idt[KEYBOARD_HANDLER_VEC].present = 1;
-    idt[KEYBOARD_HANDLER_VEC].reserved3 = 0;
+    /* Enable interrupt vector for keyboard interrupts. */
+    idt[KEYBOARD_HANDLER_VEC].present = 1;    /* mark entry present       */
+    idt[KEYBOARD_HANDLER_VEC].reserved3 = 0;  /* change to interrupt gate */
     SET_IDT_ENTRY(idt[KEYBOARD_HANDLER_VEC], keyboard_handler);
 
-    idt[RTC_HANDLER_VEC].present = 1;
-    idt[RTC_HANDLER_VEC].reserved3 = 0;
+    /* Enable interrupt vector for RTC interrupts. */
+    idt[RTC_HANDLER_VEC].present = 1;         /* mark entry present       */
+    idt[RTC_HANDLER_VEC].reserved3 = 0;       /* change to interrupt gate */
     SET_IDT_ENTRY(idt[RTC_HANDLER_VEC], rtc_handler);
 }

@@ -63,7 +63,7 @@ int div_by_zero() {
 	int b;
 	b = 1 / a;
 
-	return PASS;
+	return FAIL;
 }
 
 /* Invalid Opcode Test
@@ -79,7 +79,7 @@ int invalid_opcode() {
 	TEST_HEADER;
 	asm("ud2");
 	
-	return PASS;
+	return FAIL;
 }
 
 /* Checkpoint 2 tests */
