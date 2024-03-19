@@ -2,11 +2,11 @@
 
 #include "lib.h"
 
-#define EXCEPTION_HANDLER(name, msg)           \
-void name(void) {                              \
-    clear();                                   \
+#define EXCEPTION_HANDLER(name, msg)               \
+void name(void) {                                  \
+    clear();                                       \
     printf(":( encountered an error: " msg "\n");  \
-    while (1) {}                               \
+    while (1) {}                                   \
 }
 
 EXCEPTION_HANDLER(divide_error_exception_handler_base, "divide error exception")

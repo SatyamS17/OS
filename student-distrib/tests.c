@@ -20,9 +20,9 @@ static inline void assertion_failure(){
 
 /* Checkpoint 1 tests */
 
-/* IDT Test - Example
+/* IDT Test
  * 
- * Asserts that first 10 IDT entries are not NULL
+ * Asserts that first 20 IDT entries are not NULL
  * Inputs: None
  * Outputs: PASS/FAIL
  * Side Effects: None
@@ -34,9 +34,12 @@ int idt_test() {
 
 	int i;
 	int result = PASS;
-	for (i = 0; i < 10; ++i){
-		if ((idt[i].offset_15_00 == NULL) && 
-			(idt[i].offset_31_16 == NULL)){
+	for (i = 0; i < 20; ++i){
+		if (i == 15) {
+			continue;
+		}
+
+		if ((idt[i].offset_15_00 == NULL && idt[i].offset_31_16 == NULL) || idt[i].present == 0) {
 			assertion_failure();
 			result = FAIL;
 		}
