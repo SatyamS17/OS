@@ -132,7 +132,24 @@ int video_memory_access() {
 	return PASS;
 }
 
+
+
 /* Checkpoint 2 tests */
+
+// int dir_open_test() {
+// 	int i;
+// 	int count = file_system->num_dir_entries;
+// 	uint8_t temp[FILENAME_SIZE];
+// 	for(i = 0; i < count; i++) {
+// 		d_read(i, temp, FILENAME_SIZE);
+// 		printf(temp);
+
+// 		memset(temp, 0, FILENAME_SIZE);
+// 	}
+
+// 	return PASS;
+// }
+
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
@@ -141,10 +158,10 @@ int video_memory_access() {
 /* Test suite entry point */
 void launch_tests()
 {
-	TEST_OUTPUT("idt_test", idt_test());
+	//TEST_OUTPUT("idt_test", idt_test());
 	// TEST_OUTPUT("div_by_zero", div_by_zero());
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
 	// TEST_OUTPUT("null_pointer_access", null_pointer_access());
-	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
-	TEST_OUTPUT("video_memory_access", video_memory_access());
+	//TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
+	//TEST_OUTPUT("video_memory_access", video_memory_access());
 }

@@ -12,6 +12,7 @@
 #include "debug.h"
 #include "tests.h"
 #include "paging.h"
+#include "file_system.h"
 
 #define RUN_TESTS
 
@@ -149,9 +150,16 @@ void entry(unsigned long magic, unsigned long addr) {
     keyboard_init();
     //rtc_init();
 
+    /* Init file_system */
+    file_system_init((uint32_t *)((module_t*)mbi->mods_addr)->mod_start);
+
     /* Init paging */
     paging_init();
 
+    clear();
+
+    //d_read_test();
+    f_read_test();
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
 
