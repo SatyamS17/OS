@@ -44,15 +44,6 @@ typedef struct boot_block_t
     dentry_t dir_entires[DIR_ENTRIES_NUM];
 } boot_block_t;
 
-/* functions struct */
-typedef struct functions_t
-{
-    uint32_t (*open)(const uint8_t * filename);
-    uint32_t (*close)(uint32_t fd);
-    uint32_t (*read)(uint32_t fd, void * buf, uint32_t nbytes);
-    uint32_t (*write)(uint32_t fd, const void* buf, uint32_t nbytes);
-} functions_t;
-
 /* Intialize file system*/
 boot_block_t * file_system;
 void file_system_init(uint32_t * address); // MAKE SURE TO ADD TO KERNEL.C!!
@@ -76,7 +67,12 @@ uint32_t d_close (uint32_t fd);
 
 /* Test functions */
 void d_read_test();
-void f_read_test();
+void f_read_test(uint8_t * test_name);
+void f_read_long_test();
+void f_read_short_test();
+void f_read_exec_test();
+void test_read_dentry_name_index();
+void test_read_dentry_name();
 
 #endif // ASM
 #endif // _FILE_SYSTEM_H

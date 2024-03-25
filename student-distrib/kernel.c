@@ -159,7 +159,13 @@ void entry(unsigned long magic, unsigned long addr) {
     clear();
 
     //d_read_test();
-    f_read_test();
+    // f_read_long_test();
+    // f_read_short_test();
+    f_read_exec_test();
+
+    //test_read_dentry_index();
+    //test_read_dentry_name();
+
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
 
@@ -167,12 +173,13 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
      * without showing you any output */
-    printf("Enabling Interrupts\n");
+    //printf("Enabling Interrupts\n");
     sti();
 
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();
+
 #endif
     /* Execute the first program ("shell") ... */
 
