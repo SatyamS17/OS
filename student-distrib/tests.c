@@ -4,6 +4,7 @@
 #include "terminal.h"
 #include "x86_desc.h"
 #include "lib.h"
+#include "file_system.h"
 
 #define PASS 1
 #define FAIL 0
@@ -135,35 +136,113 @@ int video_memory_access() {
 	return PASS;
 }
 
+
+
 /* Checkpoint 2 tests */
 
-/* Terminal Driver
+/* Directory Read
  * 
- * Performs terminal reads/writes to test printing user inputs
- * Inputs: int buf_size - buffer size to test (1-256)
- * Outputs: None, FAIL if terminal doesn't write same number of bytes as read
+ * Prints out all the files in the directory
+ * Inputs: None
+ * Outputs: PASS, prints out all file in directory
  * Side Effects: None
- * Coverage: Terminal driver, keyboard
- * Files: keyboard.h/c, terminal.h/c
+ * Coverage: File System
+ * Files: file_system.h/c
  */
-int terminal_driver(int buf_size) {
+int d_read_t() {
 	TEST_HEADER;
+	d_read_test();
+	return PASS;
+}
 
-	char buf[256];
-	int bytes_r, bytes_w;
+/* File Short Read
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: PASS, prints out the content in the file
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int f_read_st() {
+	TEST_HEADER;
+	f_read_short_test();
+	return PASS;
+}
 
-	terminal_open(NULL);
-	while (1) {
-		bytes_r = terminal_read(0, (void*)buf, buf_size);
-		bytes_w = terminal_write(0, (const void*) buf, bytes_r);
-		if (bytes_r != bytes_w) {
-			printf("Bytes read (%d) != bytes written (%d)\n", bytes_r, bytes_w);
-			break;
-		}
-		memset(buf, 0, buf_size);
-	}
-	terminal_close(NULL);
-	return FAIL;
+/* File Long Read
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: PASS, prints out the content in the file
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int f_read_lt() {
+	TEST_HEADER;
+	f_read_long_test();
+	return PASS;
+}
+
+/* File Executable Read
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: PASS, prints out the content in the file
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int f_read_et() {
+	TEST_HEADER;
+	f_read_exec_test();
+	return PASS;
+}
+
+/* File Not-Readable Read
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: PASS, prints out error
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int f_read_nrt() {
+	TEST_HEADER;
+	f_read_noread_test();
+	return PASS;
+}
+
+/* Read Dentry by Index
+ * 
+ * Prints out inode based on index if its valid else error
+ * Inputs: None
+ * Outputs: PASS, prints out inode details or error
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int read_dentry_index() {
+	TEST_HEADER;
+	test_read_dentry_index();
+	return PASS;
+}
+
+/* Read Dentry by Name
+ * 
+ * Prints out inode based on file name if its valid else error
+ * Inputs: None
+ * Outputs: PASS, prints out inode details or error
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int read_dentry_name() {
+	TEST_HEADER;
+	test_read_dentry_name();
+	return PASS;
 }
 
 /* Checkpoint 3 tests */
@@ -174,12 +253,18 @@ int terminal_driver(int buf_size) {
 /* Test suite entry point */
 void launch_tests()
 {
-	TEST_OUTPUT("idt_test", idt_test());
+	//TEST_OUTPUT("idt_test", idt_test());
 	// TEST_OUTPUT("div_by_zero", div_by_zero());
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
 	// TEST_OUTPUT("null_pointer_access", null_pointer_access());
-	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
-	TEST_OUTPUT("video_memory_access", video_memory_access());
-	
-	TEST_OUTPUT("terminal_driver", terminal_driver(128));
+	//TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
+	//TEST_OUTPUT("video_memory_access", video_memory_access());
+	// TEST_OUTPUT("Directory Read", d_read_t());
+	// TEST_OUTPUT("File Short Read", f_read_st());
+	// TEST_OUTPUT("File Long Read", f_read_lt());
+	// TEST_OUTPUT("File Executable Read", f_read_et());
+	// TEST_OUTPUT("File Not-Readable Read", f_read_nrt());
+	// TEST_OUTPUT("Read Dentry by Index", read_dentry_index());
+	// TEST_OUTPUT("Read Dentry by Name", read_dentry_name());
+
 }
