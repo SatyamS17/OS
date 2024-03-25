@@ -55,3 +55,21 @@ Fix: Had to exit keyboard handler after clearing terminal
 Bug: Some keys would print incorrect characters on screen
 
 Fix: Our scancodes were slightly off (e.g. pressing z would print x)
+
+4) 
+
+Bug: Page fault when trying to test read_dentry_by_name and index
+
+Fix: When passing in the dentry I was not intalizing it so it was NULL and was getting derfrenced
+
+5) 
+
+Bug: Executables files would only print the last few chars 12345...XYZ and the first half of the file would be overwritten.
+
+Fix: I was printing NULL terminator so I had to make sure im not putc '/0'
+
+6) 
+
+Bug: Read data would not change buffer at all
+
+Fix: My logic was incorrect because I forgot the inode contains block index and thats how we refrence block data
