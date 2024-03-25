@@ -189,7 +189,8 @@ int rtc_driver_test() {
 			printf("1");
 		} 
 		printf("\n");
-	}  
+	}   
+	return PASS;
 }
 
 
@@ -306,20 +307,27 @@ int read_dentry_name() {
 /* Test suite entry point */
 void launch_tests()
 {
+	/*Checkpoint 1*/ 
+
 	//TEST_OUTPUT("idt_test", idt_test());
 	// TEST_OUTPUT("div_by_zero", div_by_zero());
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
 	// TEST_OUTPUT("null_pointer_access", null_pointer_access());
 	//TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
-	//TEST_OUTPUT("video_memory_access", video_memory_access());
-	// TEST_OUTPUT("Directory Read", d_read_t());
+	//TEST_OUTPUT("video_memory_access", video_memory_access()); 
+
+	/*Checkpoint 2*/ 
+
+	//TEST_OUTPUT("Directory Read", d_read_t());
 	// TEST_OUTPUT("File Short Read", f_read_st());
 	// TEST_OUTPUT("File Long Read", f_read_lt());
 	// TEST_OUTPUT("File Executable Read", f_read_et());
 	// TEST_OUTPUT("File Not-Readable Read", f_read_nrt());
 	// TEST_OUTPUT("Read Dentry by Index", read_dentry_index());
-	// TEST_OUTPUT("Read Dentry by Name", read_dentry_name()); 
-	//TEST_OUTPUT("terminal_driver", terminal_driver(128)); 
+	//TEST_OUTPUT("Read Dentry by Name", read_dentry_name());  
+
+	// TEST_OUTPUT("terminal_driver", terminal_driver(128));  
+
 	//TEST_OUTPUT("rtc_driver_test", rtc_driver_test());
 
 }
