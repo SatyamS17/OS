@@ -35,3 +35,23 @@ Fix: Missing paranthesis around definition
 Bug: Print statements crashed devel/info mem only showing one entry
 
 Fix: Had to enable the page table for video memory
+
+Checkpoint 2:
+
+1)
+
+Bug: Was only able to backspace once
+
+Fix: Forgot to subtract variable keeping track of number of characters in buffer
+
+2)
+
+Bug: Control-L would clear the terminal but also print the letter "l"
+
+Fix: Had to exit keyboard handler after clearing terminal
+
+3)
+
+Bug: Some keys would print incorrect characters on screen
+
+Fix: Our scancodes were slightly off (e.g. pressing z would print x)
