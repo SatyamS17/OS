@@ -430,10 +430,10 @@ void launch_tests()
 	TEST_OUTPUT("read_dentry_name", read_dentry_name());
 
 	// Enable to run RTC driver test (takes a few seconds)
-	TEST_OUTPUT("rtc_driver_test", rtc_driver_test());
+	// TEST_OUTPUT("rtc_driver_test", rtc_driver_test());
 
 	// Enable to test terminal read/write (test never exits, run it last)
-	// TEST_OUTPUT("terminal_driver", terminal_driver(128));
+	// TEST_OUTPUT("terminal_driver", terminal_driver(4));
 
 	printf("Test summary: %d passed, %d failed\n", passed, failed);
 }

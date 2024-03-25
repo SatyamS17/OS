@@ -74,6 +74,8 @@ static int capsbool, shiftbool, ctrlbool;
 
 /* Pointer to buffer for characters entered. */
 static keyboard_buffer_t* kb_buffer;
+/* Number of characters since last enter key, used to keep track of backspaces. */
+static int chars = 0;
 
 /* void keyboard_set_buffer(keyboard_buffer_t* kb);
  * Inputs: keyboard_buffer_t* kb - pointer to keyboard buffer to set
@@ -139,34 +141,42 @@ void keyboard_handler_base(void) {
         clear();
     } else {
         if (kb_buffer == NULL) {
-            if (data == BACKSPACE_PRESS){
+            if (data == BACKSPACE_PRESS && chars > 0) {
                 putc(0x08); //this is ASCII for backspace value, rest is done in putc function
+                chars--;
             } else if (data == ENTER_PRESS) {
                 putc('\n');
+                chars = 0;
             } else if (data == TAB_PRESS) {
                 int i;
                 for (i = 0; i < TAB_NUM_SPACES; i++) {
                     putc(' ');
+                    chars++;
                 }
             } else if (data < DATA_TO_CHAR_SIZE && data_to_char[data][capsbool ^ shiftbool]) {
                 putc(data_to_char[data][capsbool ^ shiftbool]);
+                chars++;
             }
         } else {
             if (data == BACKSPACE_PRESS && kb_buffer->idx > 0){
                 putc(0x08); //this is ASCII for backspace value, rest is done in putc function
                 kb_buffer->buf[--kb_buffer->idx] = 0;
+                chars--;
             } else if (data == ENTER_PRESS && kb_buffer->idx <= (BUFFER_SIZE - 1)){
                 putc('\n');
                 kb_buffer->buf[kb_buffer->idx++] = '\n';
                 kb_buffer->data_available = 1;
+                chars = 0;
             } else if (data == TAB_PRESS && kb_buffer->idx < BUFFER_SIZE - TAB_NUM_SPACES) {
                 int i;
                 for (i = 0; i < TAB_NUM_SPACES; i++) {
                     putc(' ');
                     kb_buffer->buf[kb_buffer->idx++] = ' ';
+                    chars++;
                 }
             } else if (data < DATA_TO_CHAR_SIZE && data_to_char[data][capsbool ^ shiftbool]) {
                 putc(data_to_char[data][capsbool ^ shiftbool]);
+                chars++;
                 if (kb_buffer->idx < (BUFFER_SIZE - 1)) {
                     kb_buffer->buf[kb_buffer->idx++] = data_to_char[data][capsbool ^ shiftbool];
                 }
