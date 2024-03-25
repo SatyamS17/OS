@@ -1,4 +1,7 @@
 #include "tests.h"
+
+#include "keyboard.h"
+#include "terminal.h"
 #include "x86_desc.h"
 #include "lib.h"
 #include "file_system.h"

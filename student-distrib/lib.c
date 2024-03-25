@@ -8,9 +8,16 @@
 #define NUM_ROWS    25
 #define ATTRIB      0x7
 
+/* Access the character data at a given (x, y) on the screen. */
+#define VIDEO_CHAR(x, y) (*(uint8_t *)(video_mem + ((NUM_COLS * (y) + (x)) << 1)))
+/* Access the character attribute at a given (x, y) on the screen. */
+#define VIDEO_ATTR(x, y) (*(uint8_t *)(video_mem + ((NUM_COLS * (y) + (x)) << 1) + 1))
+
 static int screen_x;
 static int screen_y;
 static char* video_mem = (char *)VIDEO;
+
+static void scroll(void);
 
 /* void clear(void);
  * Inputs: void
@@ -171,17 +178,59 @@ int32_t puts(int8_t* s) {
  * Return Value: void
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
-    if(c == '\n' || c == '\r') {
+    switch (c) {
+    case '\n':  /* fallthrough */
+    case '\r':
         screen_y++;
-        screen_y %= NUM_ROWS;
+
+        if (screen_y == NUM_ROWS) {
+            scroll();                                                                 
+        }
+
         screen_x = 0;
-    } else {
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        break;
+    case 0x08:  /* backspace ASCII code */
+        if (screen_x != 0 || screen_y != 0) {
+            screen_x--;
+            if (screen_x == -1) {
+                screen_x = NUM_COLS - 1;
+                screen_y--;
+            }
+            VIDEO_CHAR(screen_x, screen_y) = 0;
+            VIDEO_ATTR(screen_x, screen_y) = ATTRIB;
+        }
+        break;
+    default:
+        if (screen_x == NUM_COLS) {
+            screen_x = 0;
+            screen_y++;
+
+            if (screen_y == NUM_ROWS) {
+                scroll();
+            }
+        }
+        VIDEO_CHAR(screen_x, screen_y) = c;
+        VIDEO_ATTR(screen_x, screen_y) = ATTRIB;
+
         screen_x++;
-        screen_x %= NUM_COLS;
-        screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
     }
+}
+
+/* void scroll(void);
+ * Inputs: void
+ * Return Value: void
+ * Function: Scrolls up one line on the screen
+ */
+void scroll(void) {
+    int y;
+    for (y = 0; y < NUM_ROWS; y++) {
+        int x;
+        for (x = 0; x < NUM_COLS; x++) {
+            VIDEO_CHAR(x, y) = y < NUM_ROWS - 1 ? VIDEO_CHAR(x, y + 1) : 0;
+            VIDEO_ATTR(x, y) = y < NUM_ROWS - 1 ? VIDEO_ATTR(x, y + 1) : ATTRIB;
+        }
+    }
+    screen_y--;
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
