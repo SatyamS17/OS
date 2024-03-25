@@ -1,4 +1,7 @@
 #include "tests.h"
+
+#include "keyboard.h"
+#include "terminal.h"
 #include "x86_desc.h"
 #include "lib.h"
 
@@ -133,6 +136,36 @@ int video_memory_access() {
 }
 
 /* Checkpoint 2 tests */
+
+/* Terminal Driver
+ * 
+ * Performs terminal reads/writes to test printing user inputs
+ * Inputs: None
+ * Outputs: None, FAIL if terminal doesn't write same number of bytes as read
+ * Side Effects: None
+ * Coverage: Terminal driver, keyboard
+ * Files: keyboard.h/c, terminal.h/c
+ */
+int terminal_driver() {
+	TEST_HEADER;
+
+	char buf[BUFFER_SIZE];
+	int bytes_r, bytes_w;
+
+	terminal_open(NULL);
+	while (1) {
+		bytes_r = terminal_read(0, (void*)buf, BUFFER_SIZE);
+		bytes_w = terminal_write(0, (const void*) buf, bytes_r);
+		if (bytes_r != bytes_w) {
+			printf("Bytes read (%d) != bytes written (%d)\n", bytes_r, bytes_w);
+			break;
+		}
+		memset(buf, 0, BUFFER_SIZE);
+	}
+	terminal_close(NULL);
+	return FAIL;
+}
+
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
@@ -147,4 +180,6 @@ void launch_tests()
 	// TEST_OUTPUT("null_pointer_access", null_pointer_access());
 	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
 	TEST_OUTPUT("video_memory_access", video_memory_access());
+	
+	TEST_OUTPUT("terminal_driver", terminal_driver());
 }
