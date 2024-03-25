@@ -158,14 +158,6 @@ void entry(unsigned long magic, unsigned long addr) {
 
     clear();
 
-    //d_read_test();
-    // f_read_long_test();
-    // f_read_short_test();
-    f_read_exec_test();
-
-    //test_read_dentry_index();
-    //test_read_dentry_name();
-
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
 

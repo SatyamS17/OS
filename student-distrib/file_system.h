@@ -71,7 +71,8 @@ void f_read_test(uint8_t * test_name);
 void f_read_long_test();
 void f_read_short_test();
 void f_read_exec_test();
-void test_read_dentry_name_index();
+void f_read_noread_test();
+void test_read_dentry_index();
 void test_read_dentry_name();
 
 #endif // ASM
