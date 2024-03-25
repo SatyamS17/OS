@@ -148,7 +148,7 @@ void entry(unsigned long magic, unsigned long addr) {
     i8259_init();
 
     keyboard_init();
-    //rtc_init();
+    rtc_init();
 
     /* Init file_system */
     file_system_init((uint32_t *)((module_t*)mbi->mods_addr)->mod_start);
