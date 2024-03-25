@@ -4,7 +4,8 @@
 #include "terminal.h"
 #include "x86_desc.h"
 #include "lib.h"
-#include "file_system.h"
+#include "file_system.h" 
+#include "rtc.h"
 
 #define PASS 1
 #define FAIL 0
@@ -138,7 +139,59 @@ int video_memory_access() {
 
 
 
-/* Checkpoint 2 tests */
+/* Checkpoint 2 tests */ 
+
+/* Terminal Driver
+ * 
+ * Performs terminal reads/writes to test printing user inputs
+ * Inputs: int buf_size - buffer size to test (1-256)
+ * Outputs: None, FAIL if terminal doesn't write same number of bytes as read
+ * Side Effects: None
+ * Coverage: Terminal driver, keyboard
+ * Files: keyboard.h/c, terminal.h/c
+ */
+int terminal_driver(int buf_size) {
+	TEST_HEADER;
+
+	char buf[256];
+	int bytes_r, bytes_w;
+
+	terminal_open(NULL);
+	while (1) {
+		bytes_r = terminal_read(0, (void*)buf, buf_size);
+		bytes_w = terminal_write(0, (const void*) buf, bytes_r);
+		if (bytes_r != bytes_w) {
+			printf("Bytes read (%d) != bytes written (%d)\n", bytes_r, bytes_w);
+			break;
+		}
+		memset(buf, 0, buf_size);
+	}
+	terminal_close(NULL);
+	return FAIL;
+}
+ 
+/* RTC Driver Test
+ * 
+ * Changes RTC frequency, printing 1 at each interrupt
+ * Inputs: None
+ * Outputs: PASS
+ * Side Effects: None
+ * Coverage: rtc driver
+ * Files: rtc.h/c
+ */
+int rtc_driver_test() {
+	TEST_HEADER;   
+	int i, j;
+	for(i = 2; i <= 1024; i *= 2){
+		rtc_write(NULL, &i, 4); 
+		for(j = 0; j < i; j++){
+			rtc_read(NULL, NULL, NULL); 
+			printf("1");
+		} 
+		printf("\n");
+	}  
+}
+
 
 /* Directory Read
  * 
@@ -265,6 +318,8 @@ void launch_tests()
 	// TEST_OUTPUT("File Executable Read", f_read_et());
 	// TEST_OUTPUT("File Not-Readable Read", f_read_nrt());
 	// TEST_OUTPUT("Read Dentry by Index", read_dentry_index());
-	// TEST_OUTPUT("Read Dentry by Name", read_dentry_name());
+	// TEST_OUTPUT("Read Dentry by Name", read_dentry_name()); 
+	//TEST_OUTPUT("terminal_driver", terminal_driver(128)); 
+	//TEST_OUTPUT("rtc_driver_test", rtc_driver_test());
 
 }
