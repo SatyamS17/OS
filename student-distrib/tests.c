@@ -140,27 +140,27 @@ int video_memory_access() {
 /* Terminal Driver
  * 
  * Performs terminal reads/writes to test printing user inputs
- * Inputs: None
+ * Inputs: int buf_size - buffer size to test (1-256)
  * Outputs: None, FAIL if terminal doesn't write same number of bytes as read
  * Side Effects: None
  * Coverage: Terminal driver, keyboard
  * Files: keyboard.h/c, terminal.h/c
  */
-int terminal_driver() {
+int terminal_driver(int buf_size) {
 	TEST_HEADER;
 
-	char buf[BUFFER_SIZE];
+	char buf[256];
 	int bytes_r, bytes_w;
 
 	terminal_open(NULL);
 	while (1) {
-		bytes_r = terminal_read(0, (void*)buf, BUFFER_SIZE);
+		bytes_r = terminal_read(0, (void*)buf, buf_size);
 		bytes_w = terminal_write(0, (const void*) buf, bytes_r);
 		if (bytes_r != bytes_w) {
 			printf("Bytes read (%d) != bytes written (%d)\n", bytes_r, bytes_w);
 			break;
 		}
-		memset(buf, 0, BUFFER_SIZE);
+		memset(buf, 0, buf_size);
 	}
 	terminal_close(NULL);
 	return FAIL;
@@ -181,5 +181,5 @@ void launch_tests()
 	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
 	TEST_OUTPUT("video_memory_access", video_memory_access());
 	
-	TEST_OUTPUT("terminal_driver", terminal_driver());
+	TEST_OUTPUT("terminal_driver", terminal_driver(128));
 }

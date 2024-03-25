@@ -165,9 +165,11 @@ void keyboard_handler_base(void) {
                     putc(' ');
                     kb_buffer->buf[kb_buffer->idx++] = ' ';
                 }
-            } else if (data < DATA_TO_CHAR_SIZE && data_to_char[data][capsbool ^ shiftbool] && kb_buffer->idx < (BUFFER_SIZE - 1)) {
+            } else if (data < DATA_TO_CHAR_SIZE && data_to_char[data][capsbool ^ shiftbool]) {
                 putc(data_to_char[data][capsbool ^ shiftbool]);
-                kb_buffer->buf[kb_buffer->idx++] = data_to_char[data][capsbool ^ shiftbool];
+                if (kb_buffer->idx < (BUFFER_SIZE - 1)) {
+                    kb_buffer->buf[kb_buffer->idx++] = data_to_char[data][capsbool ^ shiftbool];
+                }
             }
         }
     }
