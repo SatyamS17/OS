@@ -65,15 +65,5 @@ uint32_t d_write (uint32_t fd, const void* buf, uint32_t nbytes);
 uint32_t d_open (const uint8_t * filename);
 uint32_t d_close (uint32_t fd);
 
-/* Test functions */
-void d_read_test();
-void f_read_test(uint8_t * test_name);
-void f_read_long_test();
-void f_read_short_test();
-void f_read_exec_test();
-void f_read_noread_test();
-void test_read_dentry_index();
-void test_read_dentry_name();
-
 #endif // ASM
 #endif // _FILE_SYSTEM_H

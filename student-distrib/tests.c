@@ -13,8 +13,18 @@
 /* format these macros as you see fit */
 #define TEST_HEADER \
 	printf("[TEST %s] Running %s at %s:%d\n", __FUNCTION__, __FUNCTION__, __FILE__, __LINE__)
-#define TEST_OUTPUT(name, result) \
-	printf("[TEST %s] Result = %s\n", name, (result) ? "PASS" : "FAIL");
+
+#define TEST_OUTPUT(name, result)                                       \
+do {                                                                    \
+	int r = result;                                              \
+	printf("[TEST %s] Result = %s\n", name, r ? "PASS" : "FAIL");  \
+	if (r) {                                                       \
+		passed++;                                                       \
+	} else {                                                            \
+		failed++;                                                       \
+	}                                                                   \
+} while (0)
+	
 
 static inline void assertion_failure() {
 	/* Use exception #15 for assertions, otherwise
@@ -137,9 +147,204 @@ int video_memory_access() {
 	return PASS;
 }
 
+/* Checkpoint 2 tests */
 
+/* Directory Read
+ * 
+ * Prints out all the files in the directory
+ * Inputs: None
+ * Outputs: PASS, prints out all file in directory
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int directory_read() {
+	TEST_HEADER;
 
-/* Checkpoint 2 tests */ 
+	int i, j;
+
+    // Prints out each of the files in the directory
+	for(i = 0; i < file_system->num_dir_entries; i++) {
+        uint8_t temp[FILENAME_SIZE];
+        // calls function being tested
+		d_read(0, temp, FILENAME_SIZE);
+        printf("File name: ");
+
+        for(j = 0; j < FILENAME_SIZE; j++) {
+            printf("%c", temp[j]);
+        }
+
+        printf("\n");
+	}
+
+	return PASS;
+}
+
+/* File Read
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: None
+ * Side Effects: None
+ */
+int file_read(uint8_t * test_name) {
+    int i;
+    dentry_t test_dentry;
+
+    // get file information based on inode so that we can read correct file
+    read_dentry_by_name(test_name, &test_dentry);
+
+    // get the size of the file
+    uint32_t size = ((inodes_t *)((uint8_t *)file_system + ((test_dentry.inode + 1) * (BLOCK_SIZE))))->length;
+
+    // create a large buffer that can hold large files (*20 makes sure the buffer is large for testing)
+    uint8_t buf[BLOCK_SIZE*20] = {0};
+
+    // if its a readable file then read it
+    if(test_dentry.file_type == 2) {
+        // fill buffer with data
+        uint32_t data = f_read(test_dentry.inode, buf, size);
+
+        //print buffer
+        for(i = 0; i < data; i++) {
+            if(buf[i] != '\0') {
+                putc(buf[i]);
+            }
+        }
+    
+        printf("\nFile read: ");
+		for(i = 0; i < FILENAME_SIZE; i++) { putc(test_dentry.file_name[i]); }
+		putc('\n');
+		return PASS;
+    }
+    // else print out error that it's not readable
+    else {
+        printf("\nNot readable file : ");
+		for(i = 0; i < FILENAME_SIZE; i++) { putc(test_dentry.file_name[i]); }
+    	putc('\n');
+		return FAIL;
+    }
+}
+
+/* File Read Long
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: PASS, prints out the content in the file
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int file_read_short() {
+	TEST_HEADER;
+	uint8_t test_name[FILENAME_SIZE] = "frame0.txt";
+    return file_read(test_name);
+}
+
+/* File Read Long
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: PASS, prints out the content in the file
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int file_read_long() {
+	TEST_HEADER;
+	uint8_t test_name[FILENAME_SIZE] = "verylargetextwithverylongname.tx";
+    return file_read(test_name);
+}
+
+/* File Read Executable
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: PASS, prints out the content in the file
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int file_read_executable() {
+	TEST_HEADER;
+    uint8_t test_name[FILENAME_SIZE] = "ls";
+    return file_read(test_name);
+}
+
+/* File Read Not-Readable
+ * 
+ * Prints out contents of the file
+ * Inputs: None
+ * Outputs: PASS, prints out error
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int file_read_not_readable() {
+	TEST_HEADER;
+	uint8_t test_name[FILENAME_SIZE] = ".";
+    return file_read(test_name) == FAIL ? PASS : FAIL;
+}
+
+/* Read Dentry by Index
+ * 
+ * Prints out inode based on index if its valid else error
+ * Inputs: None
+ * Outputs: PASS, prints out inode details or error
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int read_dentry_index() {
+	TEST_HEADER;
+	dentry_t test_dentry;
+    int i;
+
+    // check both valid and invalid indexs for dentry
+    for(i = 0; i < file_system->num_dir_entries + 3; i++) {
+        // test read_dentry_by_index
+        if(read_dentry_by_index(i, &test_dentry)== 0 ) {
+            printf("File %d name: %s   ", i, test_dentry.file_name);
+            printf("type: %d   ", test_dentry.file_type);
+            printf("inode: %d \n", test_dentry.inode);
+        } else {
+            printf("Index %d not valid \n", i);
+        }
+    }
+
+	return PASS;
+}
+
+/* Read Dentry by Name
+ * 
+ * Prints out inode based on file name if its valid else error
+ * Inputs: None
+ * Outputs: PASS, prints out inode details or error
+ * Side Effects: None
+ * Coverage: File System
+ * Files: file_system.h/c
+ */
+int read_dentry_name() {
+	TEST_HEADER;
+    dentry_t test_dentry;
+    int i;
+
+    // can change but good selection of test cases
+    uint8_t test_names[5][FILENAME_SIZE] = {"ls", "cat", "notreal", "", "frame0.txt"};
+
+    // check both valid and invalid file names for dentry
+    for(i = 0; i < 5; i++) {
+        // test read_dentry
+        if(read_dentry_by_name(test_names[i], &test_dentry) == 0) {
+            printf("File %d name: %s  ", i, test_dentry.file_name);
+            printf("type: %d   ", test_dentry.file_type);
+            printf("inode: %d \n", test_dentry.inode);
+        } else {
+            printf("Invalid file!!! Name: %s  \n", test_names[i]);
+        }
+    }
+	return PASS;
+}
 
 /* Terminal Driver
  * 
@@ -169,7 +374,7 @@ int terminal_driver(int buf_size) {
 	terminal_close(NULL);
 	return FAIL;
 }
- 
+
 /* RTC Driver Test
  * 
  * Changes RTC frequency, printing 1 at each interrupt
@@ -193,141 +398,42 @@ int rtc_driver_test() {
 	return PASS;
 }
 
-
-/* Directory Read
- * 
- * Prints out all the files in the directory
- * Inputs: None
- * Outputs: PASS, prints out all file in directory
- * Side Effects: None
- * Coverage: File System
- * Files: file_system.h/c
- */
-int d_read_t() {
-	TEST_HEADER;
-	d_read_test();
-	return PASS;
-}
-
-/* File Short Read
- * 
- * Prints out contents of the file
- * Inputs: None
- * Outputs: PASS, prints out the content in the file
- * Side Effects: None
- * Coverage: File System
- * Files: file_system.h/c
- */
-int f_read_st() {
-	TEST_HEADER;
-	f_read_short_test();
-	return PASS;
-}
-
-/* File Long Read
- * 
- * Prints out contents of the file
- * Inputs: None
- * Outputs: PASS, prints out the content in the file
- * Side Effects: None
- * Coverage: File System
- * Files: file_system.h/c
- */
-int f_read_lt() {
-	TEST_HEADER;
-	f_read_long_test();
-	return PASS;
-}
-
-/* File Executable Read
- * 
- * Prints out contents of the file
- * Inputs: None
- * Outputs: PASS, prints out the content in the file
- * Side Effects: None
- * Coverage: File System
- * Files: file_system.h/c
- */
-int f_read_et() {
-	TEST_HEADER;
-	f_read_exec_test();
-	return PASS;
-}
-
-/* File Not-Readable Read
- * 
- * Prints out contents of the file
- * Inputs: None
- * Outputs: PASS, prints out error
- * Side Effects: None
- * Coverage: File System
- * Files: file_system.h/c
- */
-int f_read_nrt() {
-	TEST_HEADER;
-	f_read_noread_test();
-	return PASS;
-}
-
-/* Read Dentry by Index
- * 
- * Prints out inode based on index if its valid else error
- * Inputs: None
- * Outputs: PASS, prints out inode details or error
- * Side Effects: None
- * Coverage: File System
- * Files: file_system.h/c
- */
-int read_dentry_index() {
-	TEST_HEADER;
-	test_read_dentry_index();
-	return PASS;
-}
-
-/* Read Dentry by Name
- * 
- * Prints out inode based on file name if its valid else error
- * Inputs: None
- * Outputs: PASS, prints out inode details or error
- * Side Effects: None
- * Coverage: File System
- * Files: file_system.h/c
- */
-int read_dentry_name() {
-	TEST_HEADER;
-	test_read_dentry_name();
-	return PASS;
-}
-
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
 
-
 /* Test suite entry point */
 void launch_tests()
 {
+	int passed = 0, failed = 0;
+
 	/*Checkpoint 1*/ 
 
-	//TEST_OUTPUT("idt_test", idt_test());
+	TEST_OUTPUT("idt_test", idt_test());
+
+	// Enabling these will intentionally cause blue screen
 	// TEST_OUTPUT("div_by_zero", div_by_zero());
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
 	// TEST_OUTPUT("null_pointer_access", null_pointer_access());
-	//TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
-	//TEST_OUTPUT("video_memory_access", video_memory_access()); 
+
+	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
+	TEST_OUTPUT("video_memory_access", video_memory_access()); 
 
 	/*Checkpoint 2*/ 
 
-	//TEST_OUTPUT("Directory Read", d_read_t());
-	// TEST_OUTPUT("File Short Read", f_read_st());
-	// TEST_OUTPUT("File Long Read", f_read_lt());
-	// TEST_OUTPUT("File Executable Read", f_read_et());
-	// TEST_OUTPUT("File Not-Readable Read", f_read_nrt());
-	// TEST_OUTPUT("Read Dentry by Index", read_dentry_index());
-	//TEST_OUTPUT("Read Dentry by Name", read_dentry_name());  
+	TEST_OUTPUT("directory_read", directory_read());
+	TEST_OUTPUT("file_read_short", file_read_short());
+	TEST_OUTPUT("file_read_long", file_read_long());
+	TEST_OUTPUT("file_read_executable", file_read_executable());
+	TEST_OUTPUT("file_read_not_readable", file_read_not_readable());
+	TEST_OUTPUT("read_dentry_index", read_dentry_index());
+	TEST_OUTPUT("read_dentry_name", read_dentry_name());
 
-	// TEST_OUTPUT("terminal_driver", terminal_driver(128));  
+	// Enable to run RTC driver test (takes a few seconds)
+	TEST_OUTPUT("rtc_driver_test", rtc_driver_test());
 
-	//TEST_OUTPUT("rtc_driver_test", rtc_driver_test());
+	// Enable to test terminal read/write (test never exits, run it last)
+	// TEST_OUTPUT("terminal_driver", terminal_driver(128));
 
+	printf("Test summary: %d passed, %d failed\n", passed, failed);
 }
