@@ -15,6 +15,17 @@
 void file_system_init(uint32_t * address) {
     // init file systems by loading the address of module 0
     file_system = (boot_block_t *) address;
+
+    // init file function pointers
+    file_func.open = f_open;
+    file_func.close = f_close;
+    file_func.read = f_read;
+    file_func.write = f_write;
+    // init directory function pointers
+    dir_func.open = d_open;
+    dir_func.close = d_close;
+    dir_func.read = d_read;
+    dir_func.write = d_write;
 }
 
 /* read_dentry_by_name
