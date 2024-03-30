@@ -11,19 +11,9 @@
 #define DIR_ENTRY_RESERVED      24
 #define BOOT_BLOCK_RESERVED     52
 #define DIR_ENTRIES_NUM         63
+#define ELF_SIZE                4
+// FILE SYSTEM ARRAY ----------------------------------------
 
-/* data block struct */
-typedef struct data_block_t
-{
-    uint8_t data[BLOCK_SIZE];
-} data_block_t;
-
-/* inode struct */
-typedef struct inodes_t
-{
-    uint32_t length;
-    uint32_t data_block[DATA_BLOCK_NUM];
-} inodes_t;
 
 /* directory_entries / dentry struct */
 typedef struct dentry_t
@@ -44,6 +34,22 @@ typedef struct boot_block_t
     dentry_t dir_entires[DIR_ENTRIES_NUM];
 } boot_block_t;
 
+/* inode struct */
+typedef struct inodes_t
+{
+    uint32_t length;
+    uint32_t data_block[DATA_BLOCK_NUM];
+} inodes_t;
+
+/* data block struct */
+typedef struct data_block_t
+{
+    uint8_t data[BLOCK_SIZE];
+} data_block_t;
+
+// FILE SYSTEM ARRAY ----------------------------------------
+
+/* function pointer struct */
 typedef struct func_pt_t {
     uint32_t (*open)(const uint8_t * filename);
     uint32_t (*close)(uint32_t fd);
@@ -51,6 +57,7 @@ typedef struct func_pt_t {
     uint32_t (*write)(uint32_t fd, const void* buf, uint32_t nbytes);
 } func_pt_t;
 
+/* file descriptior */
 typedef struct fd_t 
 {
     func_pt_t * functions;
@@ -83,6 +90,9 @@ uint32_t d_close (uint32_t fd);
 /* function structs */
 func_pt_t file_func;
 func_pt_t dir_func;
+
+/* Program loader */
+uint8_t load_program(uint8_t * file_name, uint8_t * location, uint32_t * eip);
 
 #endif // ASM
 #endif // _FILE_SYSTEM_H

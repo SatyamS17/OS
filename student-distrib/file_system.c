@@ -2,7 +2,7 @@
 #include "lib.h"
 
 #define RUN_TESTS
-
+uint8_t elf[ELF_SIZE] = {0x7f, 0x45, 0x4c, 0x46};
 
 /* file_system_init
  *   DESCRIPTION: Loads the address of module 0 into file system pointer
@@ -155,7 +155,7 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
         
     }
     // return the total bits written;
-    return file_inode->length;
+    return read_count;
 }
 
 /* f_read
@@ -202,6 +202,46 @@ uint32_t d_read (uint32_t fd, void * buf, uint32_t nbytes) {
 
     return 0;
 }
+
+/* load_program
+ *   DESCRIPTION: load program by copying excutable into physical memory
+ * 
+ *   INPUTS: uint32_t * location        : address of which to copy to
+ *           uint8_t * file_name        : pointer to file name array
+ *           uint32_t * eip             : pointer to eip (copied bytes 24-27)
+ *   OUTPUTS: none
+ *   RETURN VALUE: 0 if worked or -1 if it didn't
+ *   SIDE EFFECTS: Loads program into memeory
+ */
+uint8_t load_program(uint8_t * file_name, uint8_t * location, uint32_t * eip) {
+    // check for garbage values
+    if(file_name == NULL || location == NULL || eip == NULL) {return -1;}
+
+    // get acess to file if it exists
+    dentry_t file;
+
+    if(read_dentry_by_name(file_name, &file) == -1) {return -1;}
+
+    // check if the file is an executable
+    uint8_t * exec_check;
+    int i;
+
+    if(read_data(file.inode, 0, exec_check, ELF_SIZE) != ELF_SIZE) { return -1; }
+    // check for the magic numbers
+    for(i = 0; i < ELF_SIZE; i++) {
+        if(exec_check[i] != elf[i]) { return -1; }
+    }
+
+    // know it's an executable now copy to physical address
+    uint32_t file_size = ((inodes_t *)((uint8_t *)file_system + ((file.inode + 1) * (BLOCK_SIZE))))->length;
+    read_data(file.inode, 0, location, file_size);
+
+    // bytes 24-27 should be updated in eip (so offset location by 24 bytes)
+    eip = (uint32_t *)(location + 24);
+
+    return 0;
+}
+
 
 /* does nothing for this checkpoint*/
 uint32_t f_open (const uint8_t * filename) { return 0; }

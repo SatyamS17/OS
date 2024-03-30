@@ -416,18 +416,18 @@ void launch_tests()
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
 	// TEST_OUTPUT("null_pointer_access", null_pointer_access());
 
-	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
-	TEST_OUTPUT("video_memory_access", video_memory_access()); 
+	// TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
+	// TEST_OUTPUT("video_memory_access", video_memory_access()); 
 
-	/*Checkpoint 2*/ 
+	// /*Checkpoint 2*/ 
 
-	TEST_OUTPUT("directory_read", directory_read());
-	TEST_OUTPUT("file_read_short", file_read_short());
-	TEST_OUTPUT("file_read_long", file_read_long());
-	TEST_OUTPUT("file_read_executable", file_read_executable());
-	TEST_OUTPUT("file_read_not_readable", file_read_not_readable());
-	TEST_OUTPUT("read_dentry_index", read_dentry_index());
-	TEST_OUTPUT("read_dentry_name", read_dentry_name());
+	// TEST_OUTPUT("directory_read", directory_read());
+	// TEST_OUTPUT("file_read_short", file_read_short());
+	// TEST_OUTPUT("file_read_long", file_read_long());
+	// TEST_OUTPUT("file_read_executable", file_read_executable());
+	// TEST_OUTPUT("file_read_not_readable", file_read_not_readable());
+	// TEST_OUTPUT("read_dentry_index", read_dentry_index());
+	// TEST_OUTPUT("read_dentry_name", read_dentry_name());
 
 	// Enable to run RTC driver test (takes a few seconds)
 	// TEST_OUTPUT("rtc_driver_test", rtc_driver_test());

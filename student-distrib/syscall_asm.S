@@ -14,8 +14,8 @@ syscall_handler:
     pushl   %eax
 
     pushl   %edx
-    puhsl   %ecx
-    puhsl   %ebx
+    pushl   %ecx
+    pushl   %ebx
 
     cmpl    $10, %eax                   # check %eax <= 10
     jg      syscall_handler_ret
