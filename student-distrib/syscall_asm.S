@@ -18,14 +18,18 @@ syscall_handler:
     pushl   %ebx
 
     cmpl    $10, %eax                   # check %eax <= 10
-    jg      syscall_handler_ret
+    jg      syscall_handler_err
     cmpl    $1, %eax                    # check %eax >= 1
-    jl      syscall_handler_ret
+    jl      syscall_handler_err
 
     decl    %eax                        # decrement %eax to be zero-indexed for the jump table
-    jmp     *syscall_handler_jumptable(, %eax, 4)
+    call    *syscall_handler_jumptable(, %eax, 4)
     incl    %eax
 
+    jmp     syscall_handler_ret
+
+syscall_handler_err:
+    movl    $-1, %eax
     jmp     syscall_handler_ret
 
 syscall_handler_ret:
