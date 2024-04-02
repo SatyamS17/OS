@@ -4,6 +4,7 @@
 #ifndef ASM
 
 #include "types.h"
+#include "x86_desc.h"
 
 #define BLOCK_SIZE              4096
 #define DATA_BLOCK_NUM          1023
@@ -12,6 +13,10 @@
 #define BOOT_BLOCK_RESERVED     52
 #define DIR_ENTRIES_NUM         63
 #define ELF_SIZE                4
+
+// File descriptor flags
+#define FD_USED  1  // FD in use
+#define FD_AVAIL 0  // FD available
 // FILE SYSTEM ARRAY ----------------------------------------
 
 
@@ -49,19 +54,11 @@ typedef struct data_block_t
 
 // FILE SYSTEM ARRAY ----------------------------------------
 
-/* function pointer struct */
-typedef struct func_pt_t {
-    uint32_t (*open)(const uint8_t * filename);
-    uint32_t (*close)(uint32_t fd);
-    uint32_t (*read)(uint32_t fd, void * buf, uint32_t nbytes);
-    uint32_t (*write)(uint32_t fd, const void* buf, uint32_t nbytes);
-} func_pt_t;
-
 /* file descriptior */
 typedef struct fd_t 
 {
-    func_pt_t * functions;
-    inodes_t * inode;
+    func_pt_t functions;
+    uint32_t inode;
     uint32_t pos;   // needs to be updated in each "read" call
     uint32_t flags;
 } fd_t;

@@ -18,6 +18,12 @@
 /* Video memory address in table */
 #define VID_MEM_INDEX       (0xB8000 / FOURKB_BITS)
 
+/* Video memory address in table */
+#define USER_INDEX          32
+
+/* Starting address given to us in documentation*/
+#define USER_ADDRESS        0x8000000
+
 /* Inits page_dir and page_table and CR0, CR3, CR4 as needed to start paging*/
 extern void paging_init();
 

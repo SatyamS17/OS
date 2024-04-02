@@ -48,3 +48,14 @@ syscall_handler_ret:
 
 syscall_handler_jumptable:
     .long   halt, execute, read, write, open, close, getargs, vidmap, set_handler, sigreturn
+
+
+.globl flush_tlb
+flush_tlb:
+    movl	%cr3, %eax
+    movl	%eax, %cr3
+    ret
+
+.globl iret_context
+iret_context:
+    pushl 

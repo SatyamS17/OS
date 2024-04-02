@@ -8,6 +8,7 @@
 #include "i8259.h"
 #include "idt.h"
 #include "keyboard.h"
+#include "terminal.h"
 #include "rtc.h"
 #include "debug.h"
 #include "tests.h"
@@ -149,6 +150,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
     keyboard_init();
     rtc_init();
+    terminal_init_buffer();
 
     /* Init file_system */
     file_system_init((uint32_t *)((module_t*)mbi->mods_addr)->mod_start);
@@ -158,8 +160,6 @@ void entry(unsigned long magic, unsigned long addr) {
 
     clear();
 
-    /* Initialize devices, memory, filesystem, enable device interrupts on the
-     * PIC, any other initialization stuff... */
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your

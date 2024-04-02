@@ -399,6 +399,7 @@ int rtc_driver_test() {
 }
 
 /* Checkpoint 3 tests */
+
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
 
@@ -434,6 +435,5 @@ void launch_tests()
 
 	// Enable to test terminal read/write (test never exits, run it last)
 	// TEST_OUTPUT("terminal_driver", terminal_driver(4));
-
 	printf("Test summary: %d passed, %d failed\n", passed, failed);
 }

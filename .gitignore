@@ -112,3 +112,9 @@ dkms.conf
 *.qcow
 source/
 
+# Extra
+*.json
+*.dep
+*.img
+student-distrib/mp3.img
+student-distrib/bootimg

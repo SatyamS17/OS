@@ -25,8 +25,7 @@ extern void init_preg(int);
  *  
  */
 
-extern void paging_init()
-{
+void paging_init() {
     int i;
 
     // Set default not-present page entries for the directory and table
@@ -67,6 +66,11 @@ extern void paging_init()
     // init kernel by making it present and looking at kenerl address
     page_dir[1].present = 1;
     page_dir[1].page_table_address = ((int)KERNEL_ADDRESS) / FOURKB_BITS;
+
+    // init user space (8MB - 12MB & 12MB - 16MB Physical Memory)
+    page_dir[USER_INDEX].present = 1;
+    page_dir[USER_INDEX].user_supervisor = 1;
+    page_dir[USER_INDEX].page_table_address = ((int)USER_ADDRESS) / FOURKB_BITS;
 
     /* updating registers to init paging (CRO, CR3, CR4)*/
     init_preg((int)page_dir);

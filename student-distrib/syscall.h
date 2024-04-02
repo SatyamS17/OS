@@ -7,9 +7,23 @@
 
 #include "types.h"
 #include "file_system.h"
+#include "x86_desc.h"
 
 /* vector entry of Intel syscall handler */
 #define SYSCALL_HANDLER_VEC 0x80
+#define MAXPIDS 2 
+
+/* ELF magic constants */ 
+#define ELF_MN_1 0x7f
+#define ELF_MN_2 0x45 
+#define ELF_MN_3 0x4c
+#define ELF_MN_4 0x46
+
+#define USER_OFFSET 0x48000
+
+extern void flush_tlb(void);
+
+extern void iret_init(void);
 
 extern void syscall_handler(void);
 
@@ -24,28 +38,5 @@ extern int32_t vidmap(uint8_t** screen_start);
 extern int32_t set_handler(int32_t signum, void* handler_address);
 extern int32_t sigreturn(void);
 
-typedef struct context_regs {
-    uint32_t eflags;
-    uint32_t eip;
-    uint32_t esp;
-    uint32_t ebp;
-    uint32_t ecx;
-    uint32_t eax;
-    uint32_t esi;
-    uint32_t ebx;
-    uint32_t edx;
-    uint32_t edi;
-} context_regs;
  
-/* PCB Struct*/
-typedef struct{
-    fd_t fd_array[8]; // you can have 8 files in a process
-
-    uint32_t pid;     // process ID
-    uint32_t switch_pid; // used for context switching 
-
-    // information about current process
-    context_regs regs;
-} pcb_t;
-
 #endif  /* _SYSCALL_H */
