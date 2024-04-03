@@ -58,4 +58,12 @@ flush_tlb:
 
 .globl iret_context
 iret_context:
-    pushl 
+    /* push ss, esp, eflags, cs, eip in that order*/
+    pushl %eax
+    pushl %ebx
+    pushfl
+    pushl %ecx
+    pushl %edx
+
+    /* call iret */
+    iret

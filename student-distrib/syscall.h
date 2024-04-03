@@ -5,6 +5,8 @@
 #ifndef _SYSCALL_H
 #define _SYSCALL_H
 
+#ifndef ASM
+
 #include "types.h"
 #include "file_system.h"
 #include "x86_desc.h"
@@ -38,5 +40,8 @@ extern int32_t vidmap(uint8_t** screen_start);
 extern int32_t set_handler(int32_t signum, void* handler_address);
 extern int32_t sigreturn(void);
 
- 
+uint32_t PIDS[MAXPIDS];
+extern pcb_t * curr_pcb;
+
+#endif  /* ASM */
 #endif  /* _SYSCALL_H */

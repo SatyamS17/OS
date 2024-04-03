@@ -1,6 +1,7 @@
 #include "file_system.h"
 #include "lib.h"
-
+#include "syscall.h"
+#include "process.h"
 #define RUN_TESTS
 uint8_t elf[ELF_SIZE] = {0x7f, 0x45, 0x4c, 0x46};
 
@@ -172,9 +173,12 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
 uint32_t f_read (uint32_t fd, void * buf, uint32_t nbytes) {
     // check for garbage values
     if(buf == NULL) { return -1; }
+    if(fd < 2 || fd > 7) { return -1;}
+    if(curr_pcb == NULL) { return -1;}
 
+    // will this cause a problem if len is too long?
     // since fd is for next checkpoint use as inode
-    return read_data(fd, 0, buf, nbytes);
+    return read_data(curr_pcb->fds[fd].inode, curr_pcb->fds[fd].pos, buf, nbytes);
 }
 
 /* d_read
@@ -190,15 +194,19 @@ uint32_t f_read (uint32_t fd, void * buf, uint32_t nbytes) {
 uint32_t d_read (uint32_t fd, void * buf, uint32_t nbytes) {
     // check for garbage values
     if(buf == NULL) { return -1; }
+    if(fd < 2 || fd > 7) { return -1;}
+    if(curr_pcb == NULL) { return -1;}
 
     // kepp track of the index being printed since once at a time
-    static uint32_t index = 0;
-    dentry_t file = file_system->dir_entires[index];
-    index = (index + 1) % file_system->num_dir_entries;
+    if(curr_pcb->fds[fd].offset > file_system->num_inodes) { return 0;}
+    dentry_t file = file_system->dir_entires[curr_pcb->fds[fd].offset];
 
     // find the details about the file and write into buffer
     uint8_t * buffer = (uint8_t *) buf;
     memcpy(buffer, file.file_name, FILENAME_SIZE);
+
+    // look at next file
+    curr_pcb->fds[fd].offset++;
 
     return 0;
 }

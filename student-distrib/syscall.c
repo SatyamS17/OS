@@ -7,9 +7,6 @@
 #include "rtc.h"
 #include "terminal.h"
 
-uint32_t PIDS[MAXPIDS];
-pcb_t* curr_pcb;
-
 int32_t halt(uint8_t status) {
     printf("halt called\n");
     return 0;
@@ -33,16 +30,12 @@ int32_t execute(const uint8_t* command) {
     dentry_t dentry; 
     
     //file doesn't exist check 
-    if(read_dentry_by_name(file_name, &dentry) == -1){
-        return -1;
-    }  
+    if(read_dentry_by_name(file_name, &dentry) == -1){ return -1;}  
 
     //check if we can read 4 bytes  
-    uint8_t ELF_buffer[4] 
+    uint8_t ELF_buffer[4];
     
-    if(read_data(dentry.inode, 0, ELF_buffer, 4) == -1){
-        return -1; 
-    }
+    if(read_data(dentry.inode, 0, ELF_buffer, 4) == -1){ return -1; }
 
     //check if executable  
     if( ELF_buffer[0] != ELF_MN_1 || 
@@ -91,8 +84,8 @@ int32_t execute(const uint8_t* command) {
     
     // -------- load file into memory -------- //
 
-    uint16_t * eip; // address to jump to execute fun
-    load_program(file_name, (uint32_t *)(physical_address + USER_OFFSET), eip);
+    uint32_t eip; // address to jump to execute fun
+    load_program(file_name, (uint32_t *)(physical_address + USER_OFFSET), &eip);
     
     // -------- create pcb and open fds -------- //
 
@@ -124,10 +117,16 @@ int32_t execute(const uint8_t* command) {
     tss.ss0 = KERNEL_DS;
     tss.esp0 = process_kernel_address;
 
-    asm volatile("mov %%esp, %0" : "=r" (esp_value));
-    asm volatile("mov %%esp, %0" : "=r" (esp_value));
+    // get esp to push to stack
+    uint32_t esp;
+    asm volatile("mov %%esp, %0" : "=r" (esp));
+
     // push IRET context on the the correct order
-    iret_context(eip, USER_CS, eflags, esp, USER_DS);
+    asm("movl %1, %0" : "=r" (eax) : "r" (USER_DS));
+    asm("movl %1, %0" : "=r" (ebx) : "r" (esp));
+    asm("movl %1, %0" : "=r" (ecx) : "r" (USER_CS));
+    asm("movl %1, %0" : "=r" (edx) : "r" (esi));
+    iret_context();
     
 }
 int32_t read(int32_t fd, void* buf, int32_t nbytes) {
