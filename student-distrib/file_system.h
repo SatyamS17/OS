@@ -30,7 +30,7 @@ typedef struct boot_block {
     uint32_t num_inodes;
     uint32_t num_data_blocks;
     uint8_t  reserved[BOOT_BLOCK_RESERVED];
-    dentry_t dir_entires[DIR_ENTRIES_NUM];
+    dentry_t dir_entries[DIR_ENTRIES_NUM];
 } boot_block_t;
 
 /* inode struct */

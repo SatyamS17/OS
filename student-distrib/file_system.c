@@ -43,7 +43,7 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
         // compare file names and keep track of flag
         same = 1;
         for(j = 0; j < FILENAME_SIZE; j++) {
-            if(fname[j] != file_system->dir_entires[i].file_name[j]) {
+            if(fname[j] != file_system->dir_entries[i].file_name[j]) {
                 same = 0;
                 break;
             }
@@ -53,9 +53,9 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
         if(!same) { continue; }
 
         // if the same than update dentry argument with file name, type, and inode
-        memcpy(dentry->file_name, file_system->dir_entires[i].file_name, FILENAME_SIZE);
-        dentry->file_type = file_system->dir_entires[i].file_type;
-        dentry->inode = file_system->dir_entires[i].inode;
+        memcpy(dentry->file_name, file_system->dir_entries[i].file_name, FILENAME_SIZE);
+        dentry->file_type = file_system->dir_entries[i].file_type;
+        dentry->inode = file_system->dir_entries[i].inode;
 
         return 0;
     }
@@ -83,10 +83,10 @@ uint32_t read_dentry_by_index (uint32_t index, dentry_t * dentry) {
 
     //if the same than update dentry argument with file name, type, and inode
     for(i = 0; i < FILENAME_SIZE; i++) {
-        dentry->file_name[i] = file_system->dir_entires[index].file_name[i];
+        dentry->file_name[i] = file_system->dir_entries[index].file_name[i];
     }    
-    dentry->file_type = file_system->dir_entires[index].file_type;
-    dentry->inode = file_system->dir_entires[index].inode;
+    dentry->file_type = file_system->dir_entries[index].file_type;
+    dentry->inode = file_system->dir_entries[index].inode;
 
     return 0;
 }
@@ -189,7 +189,7 @@ int32_t dir_read(int32_t fd, void* buf, int32_t nbytes) {
 
     // kepp track of the index being printed since once at a time
     if (curr_pcb->fds[fd].inode > file_system->num_inodes) { return 0; }
-    dentry_t file = file_system->dir_entires[curr_pcb->fds[fd].inode];
+    dentry_t file = file_system->dir_entries[curr_pcb->fds[fd].inode];
 
     // find the details about the file and write into buffer
     uint8_t * buffer = (uint8_t *) buf;

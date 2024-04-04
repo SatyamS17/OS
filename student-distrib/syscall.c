@@ -16,7 +16,7 @@ int32_t halt(uint8_t status) {
 }
 
 int32_t execute(const uint8_t* command) {
-    printf("EXECUTE CALLED. Command: %s", (const char*) command);
+    printf("EXECUTE CALLED. Command: %s\n", (const char*) command);
 
     // -------- Parse args -------- //
     uint8_t file_name[FILENAME_SIZE];
@@ -29,24 +29,32 @@ int32_t execute(const uint8_t* command) {
         }
         file_name[i] = command[i];
     }
+
     file_name[i] = '\0';  // Null terminate
     
     // -------- Check File Validity -------- //
     dentry_t dentry; 
     
     //file doesn't exist check 
-    if (read_dentry_by_name(file_name, &dentry) == -1) { return -1; }
+    if (read_dentry_by_name(file_name, &dentry) == -1) {
+        printf("Error: Command `%s` doesn't exist\n", file_name);
+        return -1;
+    }
 
     //check if we can read 4 bytes  
     uint8_t elf_buffer[ELF_SIZE];
     
-    if (read_data(dentry.inode, 0, elf_buffer, ELF_SIZE) == -1) { return -1; }
+    if (read_data(dentry.inode, 0, elf_buffer, ELF_SIZE) == -1) {
+        printf("Error: Unable to read first 4 bytes\n");
+        return -1;
+    }
 
     //check if executable  
     if (elf_buffer[0] != ELF_MN_1 || 
         elf_buffer[1] != ELF_MN_2 ||
         elf_buffer[2] != ELF_MN_3 || 
         elf_buffer[3] != ELF_MN_4) { 
+        printf("Error: `%s` is not an executable\n", file_name);
         return -1;
     }
 
@@ -69,7 +77,7 @@ int32_t execute(const uint8_t* command) {
     }
 
     if ((old_pid == curr_pcb->pid)||(old_pid == -1)) {
-        printf("ALL PIDS USED");
+        printf("Error: All PIDs used\n");
         return -1;
     } else {
         curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));

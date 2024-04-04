@@ -186,8 +186,8 @@ void entry(unsigned long magic, unsigned long addr) {
         int   $0x80      \n\
         "
         :
-        : "b"(cmd)
-        : "%eax", "%ebx"
+        : "r"(cmd)
+        : "eax", "ebx"
     );
 
     /* Spin (nicely, so we don't chew up cycles) */
