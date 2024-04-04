@@ -175,6 +175,8 @@ void entry(unsigned long magic, unsigned long addr) {
 #endif
     /* Execute the first program ("shell") ... */
 
+    clear();
+
     // Execute shell by
     // 1. Setting eax to 2 (execute is syscall #2)
     // 2. Setting ebx to point to "shell"

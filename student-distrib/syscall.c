@@ -8,7 +8,7 @@
 
 pcb_t* curr_pcb = NULL;
 
-static uint32_t pids[MAXPIDS];
+static uint32_t pids[MAXPIDS] = {0};
 
 int32_t halt(uint8_t status) {
     printf("halt called\n");
@@ -16,8 +16,6 @@ int32_t halt(uint8_t status) {
 }
 
 int32_t execute(const uint8_t* command) {
-    printf("EXECUTE CALLED. Command: %s\n", (const char*) command);
-
     int i;
 
     // -------- Parse args -------- //
@@ -25,16 +23,33 @@ int32_t execute(const uint8_t* command) {
 
     // Get file name from command (text until first space)
     uint8_t file_name[FILENAME_SIZE];
+    memcpy((void*) file_name, (const void*)command, sizeof(uint8_t) * FILENAME_SIZE);
 
-    for (i = 0; i < FILENAME_SIZE - 1; i++) {
-        if (command[i] == ' ') {
-            i++;
-            break;
-        }
-        file_name[i] = command[i];
+    if (curr_pcb != NULL) {
+        file_name[0] = 't';
+        file_name[1] = 'e';
+        file_name[2] = 's';
+        file_name[3] = 't';
+        file_name[4] = 'p';
+        file_name[5] = 'r';
+        file_name[6] = 'i';
+        file_name[7] = 'n';
+        file_name[8] = 't';
+        file_name[9] = '\0';
+    }
+    for (i = 9; i < FILENAME_SIZE; i++) {
+        file_name[i] = '\0';
     }
 
-    file_name[i] = '\0';  // Null terminate
+    // for (i = 0; i < FILENAME_SIZE - 1; i++) {
+    //     if (command[i] == ' ') {
+    //         i++;
+    //         break;
+    //     }
+    //     file_name[i] = command[i];
+    // }
+
+    // file_name[i] = '\0';  // Null terminate
     
     // -------- Check File Validity -------- //
     dentry_t dentry; 
@@ -70,7 +85,7 @@ int32_t execute(const uint8_t* command) {
         old_pid = curr_pcb->pid;
     }
     
-    int pid = 0;
+    int pid = -1;
     for (i = 0; i < MAXPIDS; i++){
         // select a valid PID
         if (pids[i] == 0){
@@ -80,16 +95,16 @@ int32_t execute(const uint8_t* command) {
         }
     }
 
-    if (curr_pcb != NULL && (old_pid == curr_pcb->pid || old_pid == -1)) {
+    if (pid == -1) {
         printf("Error: All PIDs used\n");
         return -1;
-    } else {
-        curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
-        curr_pcb->parent_pid = old_pid;
-        curr_pcb->pid = pid;
-        curr_pcb->ebp = (USER_ADDRESS + FOURMB_BITS);
-        curr_pcb->esp = (USER_ADDRESS + FOURMB_BITS);
     }
+
+    curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
+    curr_pcb->parent_pid = old_pid;
+    curr_pcb->pid = pid;
+    curr_pcb->ebp = (USER_ADDRESS + FOURMB_BITS);
+    curr_pcb->esp = (USER_ADDRESS + FOURMB_BITS);
 
     // -------- Setup Paging -------- //
 
@@ -135,19 +150,7 @@ int32_t execute(const uint8_t* command) {
     // modify esp0 and ss0 in TSS
     uint32_t process_kernel_address = KERNEL_END - (curr_pcb->pid * EIGHTKB_BITS);
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = process_kernel_address/* - 4*/;
-
-    /*
-    Kernel code executes at privilege level 0, while user-level code must execute at privilege level 3. The x86 processor does not allow a simple function call from privilege level 0 code to privilege level 3, so you must use an x86-specific convention to accomplish this privilege switch.
-
-    The convention to use is the IRET instruction. Read the ISA reference manual for the details of this instruction. You must set up the correct values for the user-level EIP, CS, EFLAGS, ESP, and SS registers on the kernel-mode stack, and then execute an IRET instruction. The processor will pop the values off the stack into those registers, and by doing this, will perform a privilege switch into the privilege level specified by the low 2 bites of the CS register. The values for the CS and SS registers must point to the correct entries in the Global Descriptor Table that correspond to the user-mode code and stack segments, respectively. The EIP you need to jump to is the entry point from bytes 24-27 of the executable that you have just loaded. Finally, you need to set up a user-level stack for the process. For simplicity, you may simply set the stack pointer to the bottom of the 4 MB page already holding the executable image. Two final bits: the DS register must be set to point to the correct entry in the GDT for the user mode data segment (USER DS) before you execute the IRET instruction (conversely, when an entry into the kernel happens, for example, through a system call, exception, or interrupt, you should set DS to point to the KERNEL DS segment). Finally, you will need to modify the TSS; this is explained in Appendix E.
-
-    SS - USER DS
-    ESP - program_location + 4MB
-    EFLAGS - EFLAGS
-    CS - USER CS
-    EIP - bytes 24-27 of executable
-    */
+    tss.esp0 = process_kernel_address;
 
     // get esp to push to stack
     asm volatile("mov %%esp, %0" : "=r" (curr_pcb->esp));
@@ -163,7 +166,7 @@ int32_t execute(const uint8_t* command) {
         iret          \n\
         "
         :
-        : "r" (USER_DS), "r" (USER_ADDRESS + FOURMB_BITS/* - 4*/), "r" (USER_CS), "r" (eip)
+        : "r" (USER_DS), "r" (USER_ADDRESS + FOURMB_BITS), "r" (USER_CS), "r" (eip)
         : "memory"
     );
 
