@@ -167,7 +167,7 @@ int directory_read() {
 	for(i = 0; i < file_system->num_dir_entries; i++) {
         uint8_t temp[FILENAME_SIZE];
         // calls function being tested
-		d_read(0, temp, FILENAME_SIZE);
+		dir_read(0, temp, FILENAME_SIZE);
         printf("File name: ");
 
         for(j = 0; j < FILENAME_SIZE; j++) {
@@ -187,7 +187,7 @@ int directory_read() {
  * Outputs: None
  * Side Effects: None
  */
-int file_read(uint8_t * test_name) {
+int file_read_test(uint8_t * test_name) {
     int i;
     dentry_t test_dentry;
 
@@ -203,7 +203,7 @@ int file_read(uint8_t * test_name) {
     // if its a readable file then read it
     if(test_dentry.file_type == 2) {
         // fill buffer with data
-        uint32_t data = f_read(test_dentry.inode, buf, size);
+        uint32_t data = file_read(test_dentry.inode, buf, size);
 
         //print buffer
         for(i = 0; i < data; i++) {
@@ -238,7 +238,7 @@ int file_read(uint8_t * test_name) {
 int file_read_short() {
 	TEST_HEADER;
 	uint8_t test_name[FILENAME_SIZE] = "frame0.txt";
-    return file_read(test_name);
+    return file_read_test(test_name);
 }
 
 /* File Read Long
@@ -253,7 +253,7 @@ int file_read_short() {
 int file_read_long() {
 	TEST_HEADER;
 	uint8_t test_name[FILENAME_SIZE] = "verylargetextwithverylongname.tx";
-    return file_read(test_name);
+    return file_read_test(test_name);
 }
 
 /* File Read Executable
@@ -268,7 +268,7 @@ int file_read_long() {
 int file_read_executable() {
 	TEST_HEADER;
     uint8_t test_name[FILENAME_SIZE] = "ls";
-    return file_read(test_name);
+    return file_read_test(test_name);
 }
 
 /* File Read Not-Readable
@@ -283,7 +283,7 @@ int file_read_executable() {
 int file_read_not_readable() {
 	TEST_HEADER;
 	uint8_t test_name[FILENAME_SIZE] = ".";
-    return file_read(test_name) == FAIL ? PASS : FAIL;
+    return file_read_test(test_name) == FAIL ? PASS : FAIL;
 }
 
 /* Read Dentry by Index

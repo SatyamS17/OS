@@ -155,20 +155,20 @@ int32_t rtc_set_frequency(int32_t freq){
 * Function: Convert frequency to log base 2
 */  
 
-int32_t rtc_get_log2(int32_t freq){  
+int32_t rtc_get_log2(int32_t freq) {
     int32_t bits = 0;   
 
     if ((freq & (freq - 1)) != 0){  //check for power of 2
         return -1;
     } 
 
-    while(freq >>= 1){ //right shift (divide by 2) until it becomes 0
+    while(freq >>= 1) { //right shift (divide by 2) until it becomes 0
         bits++;
     } 
     return bits;
 }  
 
-void func_pt_t make_rtc_fops(void) {
+func_pt_t make_rtc_fops(void) {
     func_pt_t f;
     f.open = rtc_open;
     f.close = rtc_close;

@@ -23,7 +23,7 @@ static void scroll(void);
  * Inputs: void
  * Return Value: none
  * Function: puts cursor in right spot */
-void cursor(void){
+void cursor(void) {
     uint16_t pos = screen_y * NUM_COLS + screen_x;
     outb(0x0F, 0x3D4);
     outb((uint8_t)(pos & 0xFF), 0x3D5);
@@ -35,8 +35,6 @@ void cursor(void){
 	// outb(0x3D4, 0x0E);
 	// outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
 }
-
-
 
 /* void clear(void);
  * Inputs: void

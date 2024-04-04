@@ -2,7 +2,7 @@
 #define _TERMINAL_H
 
 #include "types.h"
-#include "process.h"
+#include "file_system.h"
 
 extern void terminal_init_buffer(void);
 

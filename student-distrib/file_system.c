@@ -1,9 +1,11 @@
 #include "file_system.h"
+
 #include "lib.h"
 #include "syscall.h"
-#include "process.h"
-#define RUN_TESTS
+
 uint8_t elf[ELF_SIZE] = {0x7f, 0x45, 0x4c, 0x46};
+
+boot_block_t* file_system = NULL;
 
 /* file_system_init
  *   DESCRIPTION: Loads the address of module 0 into file system pointer
@@ -16,17 +18,6 @@ uint8_t elf[ELF_SIZE] = {0x7f, 0x45, 0x4c, 0x46};
 void file_system_init(uint32_t * address) {
     // init file systems by loading the address of module 0
     file_system = (boot_block_t *) address;
-
-    // init file function pointers
-    file_func.open = f_open;
-    file_func.close = f_close;
-    file_func.read = f_read;
-    file_func.write = f_write;
-    // init directory function pointers
-    dir_func.open = d_open;
-    dir_func.close = d_close;
-    dir_func.read = d_read;
-    dir_func.write = d_write;
 }
 
 /* read_dentry_by_name
@@ -112,7 +103,7 @@ uint32_t read_dentry_by_index (uint32_t index, dentry_t * dentry) {
  *   RETURN VALUE: The number of bytes read
  *   SIDE EFFECTS: Updates buffer with data
  */
-uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length) {
+uint32_t read_data(uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length) {
     uint32_t inode_block_index, data_index, block_index;
     uint32_t read_count = 0;
 
@@ -170,14 +161,13 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
  *   RETURN VALUE: The number of bytes read
  *   SIDE EFFECTS: Updates buffer with data
  */
-uint32_t f_read (uint32_t fd, void * buf, uint32_t nbytes) {
+int32_t file_read(int32_t fd, void* buf, int32_t nbytes) {
     // check for garbage values
-    if(buf == NULL) { return -1; }
-    if(fd < 2 || fd > 7) { return -1;}
-    if(curr_pcb == NULL) { return -1;}
+    if (buf == NULL) { return -1; }
+    if (fd < 2 || fd >= MAX_OPEN_FILES) { return -1; }
+    if (curr_pcb == NULL) { return -1; }
 
     // will this cause a problem if len is too long?
-    // since fd is for next checkpoint use as inode
     return read_data(curr_pcb->fds[fd].inode, curr_pcb->fds[fd].pos, buf, nbytes);
 }
 
@@ -191,71 +181,49 @@ uint32_t f_read (uint32_t fd, void * buf, uint32_t nbytes) {
  *   RETURN VALUE: The number of bytes read
  *   SIDE EFFECTS: Updates buffer with data
  */
-uint32_t d_read (uint32_t fd, void * buf, uint32_t nbytes) {
+int32_t dir_read(int32_t fd, void* buf, int32_t nbytes) {
     // check for garbage values
-    if(buf == NULL) { return -1; }
-    if(fd < 2 || fd > 7) { return -1;}
-    if(curr_pcb == NULL) { return -1;}
+    if (buf == NULL) { return -1; }
+    if (fd < 2 || fd >= MAX_OPEN_FILES) { return -1; }
+    if (curr_pcb == NULL) { return -1; }
 
     // kepp track of the index being printed since once at a time
-    if(curr_pcb->fds[fd].offset > file_system->num_inodes) { return 0;}
-    dentry_t file = file_system->dir_entires[curr_pcb->fds[fd].offset];
+    if (curr_pcb->fds[fd].inode > file_system->num_inodes) { return 0; }
+    dentry_t file = file_system->dir_entires[curr_pcb->fds[fd].inode];
 
     // find the details about the file and write into buffer
     uint8_t * buffer = (uint8_t *) buf;
     memcpy(buffer, file.file_name, FILENAME_SIZE);
 
     // look at next file
-    curr_pcb->fds[fd].offset++;
+    // TODO is this necessary
+    curr_pcb->fds[fd].inode++;
 
     return 0;
 }
-
-/* load_program
- *   DESCRIPTION: load program by copying excutable into physical memory
- * 
- *   INPUTS: uint32_t * location        : address of which to copy to
- *           uint8_t * file_name        : pointer to file name array
- *           uint32_t * eip             : pointer to eip (copied bytes 24-27)
- *   OUTPUTS: none
- *   RETURN VALUE: 0 if worked or -1 if it didn't
- *   SIDE EFFECTS: Loads program into memeory
- */
-uint8_t load_program(uint8_t * file_name, uint8_t * location, uint32_t * eip) {
-    // check for garbage values
-    if(file_name == NULL || location == NULL || eip == NULL) {return -1;}
-
-    // get acess to file if it exists
-    dentry_t file;
-
-    if(read_dentry_by_name(file_name, &file) == -1) {return -1;}
-
-    // check if the file is an executable
-    uint8_t * exec_check;
-    int i;
-
-    if(read_data(file.inode, 0, exec_check, ELF_SIZE) != ELF_SIZE) { return -1; }
-    // check for the magic numbers
-    for(i = 0; i < ELF_SIZE; i++) {
-        if(exec_check[i] != elf[i]) { return -1; }
-    }
-
-    // know it's an executable now copy to physical address
-    uint32_t file_size = ((inodes_t *)((uint8_t *)file_system + ((file.inode + 1) * (BLOCK_SIZE))))->length;
-    read_data(file.inode, 0, location, file_size);
-
-    // bytes 24-27 should be updated in eip (so offset location by 24 bytes)
-    eip = (uint32_t *)(location + 24);
-
-    return 0;
-}
-
 
 /* does nothing for this checkpoint*/
-uint32_t f_open (const uint8_t * filename) { return 0; }
-uint32_t f_write (uint32_t fd, const void* buf, uint32_t nbytes) { return 0; }
-uint32_t f_close (uint32_t fd) { return 0; }
+int32_t file_open(const uint8_t* filename) { return 0; }
+int32_t file_write(int32_t fd, const void* buf, int32_t nbytes) { return 0; }
+int32_t file_close(int32_t fd) { return 0; }
 
-uint32_t d_open (const uint8_t * filename) { return 0; }
-uint32_t d_write (uint32_t fd, const void* buf, uint32_t nbytes) { return 0; }
-uint32_t d_close (uint32_t fd) { return 0; }
+int32_t dir_open(const uint8_t* filename) { return 0; }
+int32_t dir_write(int32_t fd, const void* buf, int32_t nbytes) { return 0; }
+int32_t dir_close(int32_t fd) { return 0; }
+
+func_pt_t make_file_fops(void) {
+    func_pt_t f;
+    f.open = file_open;
+    f.close = file_close;
+    f.read = file_read;
+    f.write = file_write;
+    return f;
+}
+func_pt_t make_dir_fops(void) {
+    func_pt_t f;
+    f.open = dir_open;
+    f.close = dir_close;
+    f.read = dir_read;
+    f.write = dir_write;
+    return f;
+}
