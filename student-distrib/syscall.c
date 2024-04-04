@@ -16,6 +16,8 @@ int32_t halt(uint8_t status) {
 }
 
 int32_t execute(const uint8_t* command) {
+    printf("EXECUTE CALLED. Command: %s", (const char*) command);
+
     // -------- Parse args -------- //
     uint8_t file_name[FILENAME_SIZE];
 

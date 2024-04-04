@@ -175,6 +175,21 @@ void entry(unsigned long magic, unsigned long addr) {
 #endif
     /* Execute the first program ("shell") ... */
 
+    // Execute shell by
+    // 1. Setting eax to 2 (execute is syscall #2)
+    // 2. Setting ebx to point to "shell"
+    // 3. Call interrupt 0x80
+    const int8_t* cmd = "shell";
+    asm volatile("       \n\
+        movl  $2, %%eax  \n\
+        movl  %0, %%ebx  \n\
+        int   $0x80      \n\
+        "
+        :
+        : "b"(cmd)
+        : "%eax", "%ebx"
+    );
+
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
 }
