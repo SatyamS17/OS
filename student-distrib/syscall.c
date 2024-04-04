@@ -18,13 +18,17 @@ int32_t halt(uint8_t status) {
 int32_t execute(const uint8_t* command) {
     printf("EXECUTE CALLED. Command: %s\n", (const char*) command);
 
+    int i;
+
     // -------- Parse args -------- //
-    uint8_t file_name[FILENAME_SIZE];
+    
 
     // Get file name from command (text until first space)
-    int i;
+    uint8_t file_name[FILENAME_SIZE];
+
     for (i = 0; i < FILENAME_SIZE - 1; i++) {
         if (command[i] == ' ') {
+            i++;
             break;
         }
         file_name[i] = command[i];
@@ -76,7 +80,7 @@ int32_t execute(const uint8_t* command) {
         }
     }
 
-    if ((old_pid == curr_pcb->pid)||(old_pid == -1)) {
+    if (curr_pcb != NULL && (old_pid == curr_pcb->pid || old_pid == -1)) {
         printf("Error: All PIDs used\n");
         return -1;
     } else {
@@ -92,18 +96,17 @@ int32_t execute(const uint8_t* command) {
     // make virtual mem map to right physical address
     uint32_t physical_address = KERNEL_END + (curr_pcb->pid * FOURMB_BITS);
     page_dir[USER_INDEX].page_table_address = physical_address / FOURKB_BITS;   // UNSURE ABOUT THIS *TEST*
-
     flush_tlb();
-    
+        
     // -------- load file into memory -------- //
 
-    // TODO I don't think this is right
-    
     // know it's an executable now copy to physical address
-    uint8_t* location = (uint8_t*) physical_address + USER_OFFSET;
+    uint8_t* program_location = (uint8_t*) (USER_ADDRESS + USER_OFFSET);
     uint32_t file_size = ((inodes_t *)((uint8_t *)file_system + ((dentry.inode + 1) * (BLOCK_SIZE))))->length;
-    read_data(dentry.inode, 0, location, file_size);
-    
+    read_data(dentry.inode, 0, program_location, file_size);
+
+    uint32_t eip = *((uint32_t*)(program_location + 24));
+
     // -------- create pcb and open fds -------- //
 
     // Clear all FDs
@@ -130,20 +133,39 @@ int32_t execute(const uint8_t* command) {
     // -------- Prepare For Context Switch -------- //
 
     // modify esp0 and ss0 in TSS
-    uint32_t process_kernel_address = KERNEL_END - (curr_pcb->pid * EIGHTKB_BITS) - 4;
+    uint32_t process_kernel_address = KERNEL_END - (curr_pcb->pid * EIGHTKB_BITS);
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = process_kernel_address;
+    tss.esp0 = process_kernel_address/* - 4*/;
+
+    /*
+    Kernel code executes at privilege level 0, while user-level code must execute at privilege level 3. The x86 processor does not allow a simple function call from privilege level 0 code to privilege level 3, so you must use an x86-specific convention to accomplish this privilege switch.
+
+    The convention to use is the IRET instruction. Read the ISA reference manual for the details of this instruction. You must set up the correct values for the user-level EIP, CS, EFLAGS, ESP, and SS registers on the kernel-mode stack, and then execute an IRET instruction. The processor will pop the values off the stack into those registers, and by doing this, will perform a privilege switch into the privilege level specified by the low 2 bites of the CS register. The values for the CS and SS registers must point to the correct entries in the Global Descriptor Table that correspond to the user-mode code and stack segments, respectively. The EIP you need to jump to is the entry point from bytes 24-27 of the executable that you have just loaded. Finally, you need to set up a user-level stack for the process. For simplicity, you may simply set the stack pointer to the bottom of the 4 MB page already holding the executable image. Two final bits: the DS register must be set to point to the correct entry in the GDT for the user mode data segment (USER DS) before you execute the IRET instruction (conversely, when an entry into the kernel happens, for example, through a system call, exception, or interrupt, you should set DS to point to the KERNEL DS segment). Finally, you will need to modify the TSS; this is explained in Appendix E.
+
+    SS - USER DS
+    ESP - program_location + 4MB
+    EFLAGS - EFLAGS
+    CS - USER CS
+    EIP - bytes 24-27 of executable
+    */
 
     // get esp to push to stack
-    uint32_t esp;
-    asm volatile("mov %%esp, %0" : "=r" (esp));
+    asm volatile("mov %%esp, %0" : "=r" (curr_pcb->esp));
+    asm volatile("mov %%ebp, %0" : "=r" (curr_pcb->ebp));
 
     // push IRET context on the the correct order
-    // asm("movl %1, %0" : "=r" (eax) : "r" (USER_DS));
-    // asm("movl %1, %0" : "=r" (ebx) : "r" (esp));
-    // asm("movl %1, %0" : "=r" (ecx) : "r" (USER_CS));
-    // asm("movl %1, %0" : "=r" (edx) : "r" (esi));
-    iret_context();
+    asm volatile("    \n\
+        pushl %0      \n\
+        pushl %1      \n\
+        pushfl        \n\
+        pushl %2      \n\
+        pushl %3      \n\
+        iret          \n\
+        "
+        :
+        : "r" (USER_DS), "r" (USER_ADDRESS + FOURMB_BITS/* - 4*/), "r" (USER_CS), "r" (eip)
+        : "memory"
+    );
 
     return 0;
 }

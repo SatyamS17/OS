@@ -54,15 +54,3 @@ flush_tlb:
     movl	%cr3, %eax
     movl	%eax, %cr3
     ret
-
-.globl iret_context
-iret_context:
-    /* push ss, esp, eflags, cs, eip in that order*/
-    pushl %eax
-    pushl %ebx
-    pushfl
-    pushl %ecx
-    pushl %edx
-
-    /* call iret */
-    iret

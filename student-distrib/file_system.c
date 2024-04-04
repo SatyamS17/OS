@@ -32,7 +32,7 @@ void file_system_init(uint32_t * address) {
  */
 uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
     // check for garbage values
-    if(dentry == NULL || fname == NULL) { return -1; }
+    if (dentry == NULL || fname == NULL) { return -1; }
 
     // find the file (if it exsits by name)
     int i, j, same;

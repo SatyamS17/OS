@@ -46,8 +46,6 @@ extern pcb_t* curr_pcb;
 
 extern void flush_tlb(void);
 
-extern void iret_context(void);
-
 /* General syscall handler */
 extern void syscall_handler(void);
 

@@ -179,7 +179,7 @@ void entry(unsigned long magic, unsigned long addr) {
     // 1. Setting eax to 2 (execute is syscall #2)
     // 2. Setting ebx to point to "shell"
     // 3. Call interrupt 0x80
-    const int8_t* cmd = "shell";
+    const uint8_t cmd[FILENAME_SIZE] = "shell";
     asm volatile("       \n\
         movl  $2, %%eax  \n\
         movl  %0, %%ebx  \n\
