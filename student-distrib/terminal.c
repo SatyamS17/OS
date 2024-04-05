@@ -6,6 +6,15 @@
 /* Buffer for characters entered. */
 static keyboard_buffer_t kb_buffer;
 
+/* void terminal_init_buffer(void)
+ * Inputs: const uint8_t* filename - name of file
+ * Return Value: int32_t 0 or -1 for success or fail
+ * Function: initializes terminal buffer
+ */
+void terminal_init_buffer(void) {
+    keyboard_set_buffer(&kb_buffer);
+}
+
 /* int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes)
  * Inputs: int32_t fd - file descriptor
            void* buf - buffer holding bytes
@@ -73,8 +82,7 @@ int32_t terminal_write(int32_t fd, const void* buf, int32_t nbytes) {
  * Function: initializes terminal
  */
 int32_t terminal_open(const uint8_t* filename) {
-    keyboard_set_buffer(&kb_buffer);
-    return 0;
+    return -1;
 }
 
 /* int32_t terminal_close(const uint8_t* filename)
@@ -83,6 +91,23 @@ int32_t terminal_open(const uint8_t* filename) {
  * Function: ends terminal
  */
 int32_t terminal_close(int32_t fd) {
-    keyboard_set_buffer(NULL);
-    return 0;
+    return -1;
+}
+
+func_pt_t make_stdin_fops(void) {
+    func_pt_t f;
+    f.open = terminal_open;
+    f.close = terminal_close;
+    f.read = terminal_read;
+    f.write = NULL;
+    return f;
+}
+
+func_pt_t make_stdout_fops(void) {
+    func_pt_t f;
+    f.open = terminal_open;
+    f.close = terminal_close;
+    f.read = NULL;
+    f.write = terminal_write;
+    return f;
 }

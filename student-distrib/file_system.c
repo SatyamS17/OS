@@ -1,8 +1,11 @@
 #include "file_system.h"
+
 #include "lib.h"
+#include "syscall.h"
 
-#define RUN_TESTS
+uint8_t elf[ELF_SIZE] = {0x7f, 0x45, 0x4c, 0x46};
 
+boot_block_t* file_system = NULL;
 
 /* file_system_init
  *   DESCRIPTION: Loads the address of module 0 into file system pointer
@@ -29,10 +32,17 @@ void file_system_init(uint32_t * address) {
  */
 uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
     // check for garbage values
-    if(dentry == NULL || fname == NULL) { return -1; }
+    if (dentry == NULL || fname == NULL) { return -1; }
 
     // find the file (if it exsits by name)
     int i, j, same;
+
+    if(fname[0] == '.') {
+        dentry->file_name[0] = '.';
+        dentry->file_type = file_system->dir_entries[0].file_type;
+        dentry->inode = file_system->dir_entries[0].inode;
+        return 0;
+    }
 
     // check each directory
     for(i = 0; i < file_system->num_dir_entries; i++) {
@@ -40,7 +50,7 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
         // compare file names and keep track of flag
         same = 1;
         for(j = 0; j < FILENAME_SIZE; j++) {
-            if(fname[j] != file_system->dir_entires[i].file_name[j]) {
+            if(fname[j] != file_system->dir_entries[i].file_name[j]) {
                 same = 0;
                 break;
             }
@@ -50,9 +60,9 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
         if(!same) { continue; }
 
         // if the same than update dentry argument with file name, type, and inode
-        memcpy(dentry->file_name, file_system->dir_entires[i].file_name, FILENAME_SIZE);
-        dentry->file_type = file_system->dir_entires[i].file_type;
-        dentry->inode = file_system->dir_entires[i].inode;
+        memcpy(dentry->file_name, file_system->dir_entries[i].file_name, FILENAME_SIZE);
+        dentry->file_type = file_system->dir_entries[i].file_type;
+        dentry->inode = file_system->dir_entries[i].inode;
 
         return 0;
     }
@@ -80,10 +90,10 @@ uint32_t read_dentry_by_index (uint32_t index, dentry_t * dentry) {
 
     //if the same than update dentry argument with file name, type, and inode
     for(i = 0; i < FILENAME_SIZE; i++) {
-        dentry->file_name[i] = file_system->dir_entires[index].file_name[i];
+        dentry->file_name[i] = file_system->dir_entries[index].file_name[i];
     }    
-    dentry->file_type = file_system->dir_entires[index].file_type;
-    dentry->inode = file_system->dir_entires[index].inode;
+    dentry->file_type = file_system->dir_entries[index].file_type;
+    dentry->inode = file_system->dir_entries[index].inode;
 
     return 0;
 }
@@ -100,7 +110,7 @@ uint32_t read_dentry_by_index (uint32_t index, dentry_t * dentry) {
  *   RETURN VALUE: The number of bytes read
  *   SIDE EFFECTS: Updates buffer with data
  */
-uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length) {
+uint32_t read_data(uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length) {
     uint32_t inode_block_index, data_index, block_index;
     uint32_t read_count = 0;
 
@@ -144,7 +154,7 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
         
     }
     // return the total bits written;
-    return file_inode->length;
+    return read_count;
 }
 
 /* f_read
@@ -158,12 +168,14 @@ uint32_t read_data (uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t leng
  *   RETURN VALUE: The number of bytes read
  *   SIDE EFFECTS: Updates buffer with data
  */
-uint32_t f_read (uint32_t fd, void * buf, uint32_t nbytes) {
+int32_t file_read(int32_t fd, void* buf, int32_t nbytes) {
     // check for garbage values
-    if(buf == NULL) { return -1; }
+    if (buf == NULL) { return -1; }
+    if (fd < 2 || fd >= MAX_OPEN_FILES) { return -1; }
+    if (curr_pcb == NULL) { return -1; }
 
-    // since fd is for next checkpoint use as inode
-    return read_data(fd, 0, buf, nbytes);
+    // will this cause a problem if len is too long?
+    return read_data(curr_pcb->fds[fd].inode, curr_pcb->fds[fd].pos, buf, nbytes);
 }
 
 /* d_read
@@ -176,27 +188,52 @@ uint32_t f_read (uint32_t fd, void * buf, uint32_t nbytes) {
  *   RETURN VALUE: The number of bytes read
  *   SIDE EFFECTS: Updates buffer with data
  */
-uint32_t d_read (uint32_t fd, void * buf, uint32_t nbytes) {
+int32_t dir_read(int32_t fd, void* buf, int32_t nbytes) {
     // check for garbage values
-    if(buf == NULL) { return -1; }
+    if (buf == NULL) { return -1; }
+    if (fd < 0 || fd >= MAX_OPEN_FILES) { return -1; }
+    if (curr_pcb == NULL) { return -1; }
 
     // kepp track of the index being printed since once at a time
-    static uint32_t index = 0;
-    dentry_t file = file_system->dir_entires[index];
-    index = (index + 1) % file_system->num_dir_entries;
+    if (curr_pcb->fds[fd].pos >= file_system->num_dir_entries) { return 0; }
+    dentry_t file = file_system->dir_entries[curr_pcb->fds[fd].pos];
 
     // find the details about the file and write into buffer
     uint8_t * buffer = (uint8_t *) buf;
-    memcpy(buffer, file.file_name, FILENAME_SIZE);
 
-    return 0;
+    // look at next file
+    int i;
+    for(i = 0; file.file_name[i] != '\0' && i < FILENAME_SIZE; i++) {
+        buffer[i] = file.file_name[i];
+    }
+
+    curr_pcb->fds[fd].pos++;
+
+    return i;
 }
 
 /* does nothing for this checkpoint*/
-uint32_t f_open (const uint8_t * filename) { return 0; }
-uint32_t f_write (uint32_t fd, const void* buf, uint32_t nbytes) { return 0; }
-uint32_t f_close (uint32_t fd) { return 0; }
+int32_t file_open(const uint8_t* filename) { return 0; }
+int32_t file_write(int32_t fd, const void* buf, int32_t nbytes) { return 0; }
+int32_t file_close(int32_t fd) { return 0; }
 
-uint32_t d_open (const uint8_t * filename) { return 0; }
-uint32_t d_write (uint32_t fd, const void* buf, uint32_t nbytes) { return 0; }
-uint32_t d_close (uint32_t fd) { return 0; }
+int32_t dir_open(const uint8_t* filename) { return 0; }
+int32_t dir_write(int32_t fd, const void* buf, int32_t nbytes) { return 0; }
+int32_t dir_close(int32_t fd) { return 0; }
+
+func_pt_t make_file_fops(void) {
+    func_pt_t f;
+    f.open = file_open;
+    f.close = file_close;
+    f.read = file_read;
+    f.write = file_write;
+    return f;
+}
+func_pt_t make_dir_fops(void) {
+    func_pt_t f;
+    f.open = dir_open;
+    f.close = dir_close;
+    f.read = dir_read;
+    f.write = dir_write;
+    return f;
+}

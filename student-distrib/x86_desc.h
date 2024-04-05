@@ -208,7 +208,6 @@ typedef struct __attribute__ ((packed)) page_table_t{
 page_directory_t page_dir[PAGE_NUM] __attribute__ ((aligned (FOURKB_BITS)));
 page_table_t page_table[PAGE_NUM] __attribute__ ((aligned (FOURKB_BITS)));
 
-
 /* Sets runtime parameters for an IDT entry */
 #define SET_IDT_ENTRY(str, handler)                              \
 do {                                                             \

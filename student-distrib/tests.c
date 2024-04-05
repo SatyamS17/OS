@@ -167,7 +167,7 @@ int directory_read() {
 	for(i = 0; i < file_system->num_dir_entries; i++) {
         uint8_t temp[FILENAME_SIZE];
         // calls function being tested
-		d_read(0, temp, FILENAME_SIZE);
+		dir_read(0, temp, FILENAME_SIZE);
         printf("File name: ");
 
         for(j = 0; j < FILENAME_SIZE; j++) {
@@ -187,7 +187,7 @@ int directory_read() {
  * Outputs: None
  * Side Effects: None
  */
-int file_read(uint8_t * test_name) {
+int file_read_test(uint8_t * test_name) {
     int i;
     dentry_t test_dentry;
 
@@ -203,7 +203,7 @@ int file_read(uint8_t * test_name) {
     // if its a readable file then read it
     if(test_dentry.file_type == 2) {
         // fill buffer with data
-        uint32_t data = f_read(test_dentry.inode, buf, size);
+        uint32_t data = file_read(test_dentry.inode, buf, size);
 
         //print buffer
         for(i = 0; i < data; i++) {
@@ -238,7 +238,7 @@ int file_read(uint8_t * test_name) {
 int file_read_short() {
 	TEST_HEADER;
 	uint8_t test_name[FILENAME_SIZE] = "frame0.txt";
-    return file_read(test_name);
+    return file_read_test(test_name);
 }
 
 /* File Read Long
@@ -253,7 +253,7 @@ int file_read_short() {
 int file_read_long() {
 	TEST_HEADER;
 	uint8_t test_name[FILENAME_SIZE] = "verylargetextwithverylongname.tx";
-    return file_read(test_name);
+    return file_read_test(test_name);
 }
 
 /* File Read Executable
@@ -268,7 +268,7 @@ int file_read_long() {
 int file_read_executable() {
 	TEST_HEADER;
     uint8_t test_name[FILENAME_SIZE] = "ls";
-    return file_read(test_name);
+    return file_read_test(test_name);
 }
 
 /* File Read Not-Readable
@@ -283,7 +283,7 @@ int file_read_executable() {
 int file_read_not_readable() {
 	TEST_HEADER;
 	uint8_t test_name[FILENAME_SIZE] = ".";
-    return file_read(test_name) == FAIL ? PASS : FAIL;
+    return file_read_test(test_name) == FAIL ? PASS : FAIL;
 }
 
 /* Read Dentry by Index
@@ -399,6 +399,7 @@ int rtc_driver_test() {
 }
 
 /* Checkpoint 3 tests */
+
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
 
@@ -416,24 +417,23 @@ void launch_tests()
 	// TEST_OUTPUT("invalid_opcode", invalid_opcode());
 	// TEST_OUTPUT("null_pointer_access", null_pointer_access());
 
-	TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
-	TEST_OUTPUT("video_memory_access", video_memory_access()); 
+	// TEST_OUTPUT("kernel_space_memory_access", kernel_space_memory_access());
+	// TEST_OUTPUT("video_memory_access", video_memory_access()); 
 
-	/*Checkpoint 2*/ 
+	// /*Checkpoint 2*/ 
 
-	TEST_OUTPUT("directory_read", directory_read());
-	TEST_OUTPUT("file_read_short", file_read_short());
-	TEST_OUTPUT("file_read_long", file_read_long());
-	TEST_OUTPUT("file_read_executable", file_read_executable());
-	TEST_OUTPUT("file_read_not_readable", file_read_not_readable());
-	TEST_OUTPUT("read_dentry_index", read_dentry_index());
-	TEST_OUTPUT("read_dentry_name", read_dentry_name());
+	// TEST_OUTPUT("directory_read", directory_read());
+	// TEST_OUTPUT("file_read_short", file_read_short());
+	// TEST_OUTPUT("file_read_long", file_read_long());
+	// TEST_OUTPUT("file_read_executable", file_read_executable());
+	// TEST_OUTPUT("file_read_not_readable", file_read_not_readable());
+	// TEST_OUTPUT("read_dentry_index", read_dentry_index());
+	// TEST_OUTPUT("read_dentry_name", read_dentry_name());
 
 	// Enable to run RTC driver test (takes a few seconds)
 	// TEST_OUTPUT("rtc_driver_test", rtc_driver_test());
 
 	// Enable to test terminal read/write (test never exits, run it last)
 	// TEST_OUTPUT("terminal_driver", terminal_driver(4));
-
 	printf("Test summary: %d passed, %d failed\n", passed, failed);
 }

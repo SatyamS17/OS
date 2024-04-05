@@ -8,6 +8,7 @@
 #include "i8259.h"
 #include "idt.h"
 #include "keyboard.h"
+#include "terminal.h"
 #include "rtc.h"
 #include "debug.h"
 #include "tests.h"
@@ -149,6 +150,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
     keyboard_init();
     rtc_init();
+    terminal_init_buffer();
 
     /* Init file_system */
     file_system_init((uint32_t *)((module_t*)mbi->mods_addr)->mod_start);
@@ -158,8 +160,6 @@ void entry(unsigned long magic, unsigned long addr) {
 
     clear();
 
-    /* Initialize devices, memory, filesystem, enable device interrupts on the
-     * PIC, any other initialization stuff... */
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your
@@ -174,6 +174,23 @@ void entry(unsigned long magic, unsigned long addr) {
 
 #endif
     /* Execute the first program ("shell") ... */
+
+    clear();
+
+    // Execute shell by
+    // 1. Setting eax to 2 (execute is syscall #2)
+    // 2. Setting ebx to point to "shell"
+    // 3. Call interrupt 0x80
+    const uint8_t cmd[FILENAME_SIZE] = "shell";
+    asm volatile("       \n\
+        movl  $2, %%eax  \n\
+        movl  %0, %%ebx  \n\
+        int   $0x80      \n\
+        "
+        :
+        : "r"(cmd)
+        : "eax", "ebx"
+    );
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");

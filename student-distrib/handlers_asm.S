@@ -31,7 +31,4 @@ link_asm(machine_check_exception_handler, machine_check_exception_handler_base)
 link_asm(simd_floating_point_exception_handler, simd_floating_point_exception_handler_base)
 
 link_asm(keyboard_handler, keyboard_handler_base)
-
 link_asm(rtc_handler, rtc_handler_base)
-
-link_asm(syscall_handler, syscall_handler_base)

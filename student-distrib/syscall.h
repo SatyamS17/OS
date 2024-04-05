@@ -1,11 +1,50 @@
+//https://play.typeracer.com?rt=19o9oge9sb
+//https://humanbenchmark.com/tests/chimp
+//https://arithmetic.zetamac.com/
+
 #ifndef _SYSCALL_H
 #define _SYSCALL_H
+
+#include "file_system.h"
+#include "types.h"
+#include "x86_desc.h"
 
 /* vector entry of Intel syscall handler */
 #define SYSCALL_HANDLER_VEC 0x80
 
-/* Handler for system call interrupt. */
+/* Max open file descriptors for a process */
+#define MAX_OPEN_FILES  8
+
+/* PCB Struct*/
+typedef struct pcb {
+    fd_t fds[MAX_OPEN_FILES];
+
+    int32_t pid;        // process ID
+    struct pcb* parent_pcb;  // used for context switching 
+
+    // information about current process
+    uint32_t saved_ebp;
+} pcb_t;
+
+/* Pointer to current PCB. */
+extern pcb_t* curr_pcb;
+
+/* Manually flush TLB cache. */
+extern void flush_tlb(void);
+
+/* General syscall handler */
 extern void syscall_handler(void);
-extern void syscall_handler_base(void);
+
+/* Syscalls */
+extern int32_t halt(uint8_t status);
+extern int32_t execute(const uint8_t* command);
+extern int32_t read(int32_t fd, void* buf, int32_t nbytes);
+extern int32_t write(int32_t fd, const void* buf, int32_t nbytes);
+extern int32_t open(const uint8_t* filename);
+extern int32_t close(int32_t fd);
+extern int32_t getargs(uint8_t* buf, int32_t nbytes);
+extern int32_t vidmap(uint8_t** screen_start);
+extern int32_t set_handler(int32_t signum, void* handler_address);
+extern int32_t sigreturn(void);
 
 #endif  /* _SYSCALL_H */

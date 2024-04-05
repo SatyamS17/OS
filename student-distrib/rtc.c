@@ -20,7 +20,7 @@ volatile uint32_t rtc_interrupt_counter = 0;           //counter for number of i
 volatile uint32_t rtc_ticks_per_interrupt = INIT_FREQ; //used to track the ticks for the emulated frequency
 volatile uint32_t rtc_interrupt_flag = 0;              //used to indicate a virtual RTC interrupt has occured
 
-/* extern void rtc_init(void)
+/* void rtc_init(void)
  * Inputs: void
  * Return Value: N/A
  * Function: initializes IRQ number for RTC (IRQ8)
@@ -52,7 +52,7 @@ void rtc_handler_base(void) {
 
     rtc_interrupt_counter++; //increment for each interrupt   
 
-    if (rtc_interrupt_counter == rtc_ticks_per_interrupt){ 
+    if (rtc_interrupt_counter >= rtc_ticks_per_interrupt){ 
         rtc_interrupt_flag = 1; 
         rtc_interrupt_counter = 0;
     }
@@ -155,15 +155,24 @@ int32_t rtc_set_frequency(int32_t freq){
 * Function: Convert frequency to log base 2
 */  
 
-int32_t rtc_get_log2(int32_t freq){  
+int32_t rtc_get_log2(int32_t freq) {
     int32_t bits = 0;   
 
     if ((freq & (freq - 1)) != 0){  //check for power of 2
         return -1;
     } 
 
-    while(freq >>= 1){ //right shift (divide by 2) until it becomes 0
+    while(freq >>= 1) { //right shift (divide by 2) until it becomes 0
         bits++;
     } 
     return bits;
 }  
+
+func_pt_t make_rtc_fops(void) {
+    func_pt_t f;
+    f.open = rtc_open;
+    f.close = rtc_close;
+    f.read = rtc_read;
+    f.write = rtc_write;
+    return f;
+}
