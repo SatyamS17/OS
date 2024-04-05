@@ -82,7 +82,7 @@ int32_t terminal_write(int32_t fd, const void* buf, int32_t nbytes) {
  * Function: initializes terminal
  */
 int32_t terminal_open(const uint8_t* filename) {
-    return 0;
+    return -1;
 }
 
 /* int32_t terminal_close(const uint8_t* filename)
@@ -91,7 +91,7 @@ int32_t terminal_open(const uint8_t* filename) {
  * Function: ends terminal
  */
 int32_t terminal_close(int32_t fd) {
-    return 0;
+    return -1;
 }
 
 func_pt_t make_stdin_fops(void) {

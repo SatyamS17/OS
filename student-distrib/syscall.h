@@ -12,21 +12,6 @@
 /* vector entry of Intel syscall handler */
 #define SYSCALL_HANDLER_VEC 0x80
 
-/* Max number of processes */
-#define MAXPIDS 2
-
-/* ELF magic constants */ 
-#define ELF_MN_1 0x7f
-#define ELF_MN_2 0x45 
-#define ELF_MN_3 0x4c
-#define ELF_MN_4 0x46
-
-#define USER_OFFSET 0x48000
-
-#define KERNEL_END      0x800000
-#define EIGHTKB_BITS    (FOURKB_BITS * 2)
-#define FOURMB_BITS     0x400000
-
 /* Max open file descriptors for a process */
 #define MAX_OPEN_FILES  8
 
@@ -41,8 +26,10 @@ typedef struct pcb {
     uint32_t saved_ebp;
 } pcb_t;
 
+/* Pointer to current PCB. */
 extern pcb_t* curr_pcb;
 
+/* Manually flush TLB cache. */
 extern void flush_tlb(void);
 
 /* General syscall handler */

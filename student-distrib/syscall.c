@@ -6,12 +6,39 @@
 #include "rtc.h"
 #include "terminal.h"
 
-// Pointer to current PCB.
+/* Max number of processes */
+#define MAXPIDS 2
+
+/* ELF magic constants */ 
+#define ELF_MN_1 0x7f
+#define ELF_MN_2 0x45 
+#define ELF_MN_3 0x4c
+#define ELF_MN_4 0x46
+
+/* Offset for program image */
+#define USER_OFFSET 0x48000
+
+#define KERNEL_END      0x800000
+#define EIGHTKB_BITS    (FOURKB_BITS * 2)
+#define FOURMB_BITS     0x400000
+
+/* Offset to find EIP in program image */
+#define EIP_OFFSET  24
+
+/* Pointer to current PCB. */
 pcb_t* curr_pcb = NULL;
 
-// Array of which PIDs are in use or not (1 or 0).
+/* Array of which PIDs are in use or not (1 or 0). */
 static uint32_t pids[MAXPIDS];
 
+/* int32_t halt(uint8_t status)
+ *   DESCRIPTION: Ends process and returns context back to parent process.
+ * 
+ *   INPUTS: uint8_t status       : the current status passed by execute
+ *   OUTPUTS: none
+ *   RETURN VALUE: status
+ *   SIDE EFFECTS: Returns to parent process
+ */
 int32_t halt(uint8_t status) {
     // -------- Check if trying to exit base shell --------
     if (curr_pcb->parent_pcb == NULL) {
@@ -39,9 +66,8 @@ int32_t halt(uint8_t status) {
     }
 
     // -------- Write parent's process info back to TSS --------
-    uint32_t process_kernel_address = KERNEL_END - (curr_pcb->parent_pcb->pid * EIGHTKB_BITS);
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = process_kernel_address;
+    tss.esp0 = KERNEL_END - (curr_pcb->parent_pcb->pid * EIGHTKB_BITS);
     
     // -------- Jump to execute return --------
     uint32_t saved_ebp = curr_pcb->saved_ebp;
@@ -67,6 +93,15 @@ int32_t halt(uint8_t status) {
     return -1;
 }
 
+/* int32_t execute(const uint8_t* command)
+ *   DESCRIPTION: Executes a new process by setting up iret, paging, and other paramaters. Checks to 
+ *                 make sure that the process can start and loads program into memory.
+ * 
+ *   INPUTS: const uint8_t* command       : the command passed in terminal
+ *   OUTPUTS: none
+ *   RETURN VALUE: status of the execute
+ *   SIDE EFFECTS: Starts a process if its able to
+ */
 int32_t execute(const uint8_t* command) {
     int i;
 
@@ -150,7 +185,7 @@ int32_t execute(const uint8_t* command) {
     uint32_t file_size = ((inodes_t *)((uint8_t *)file_system + ((dentry.inode + 1) * (BLOCK_SIZE))))->length;
     read_data(dentry.inode, 0, program_location, file_size);
 
-    uint32_t eip = *((uint32_t*) (program_location + 24));
+    uint32_t eip = *((uint32_t*) (program_location + EIP_OFFSET));
 
     // -------- create pcb and open fds -------- //
 
@@ -176,15 +211,15 @@ int32_t execute(const uint8_t* command) {
     // -------- Prepare For Context Switch -------- //
 
     // modify esp0 and ss0 in TSS
-    uint32_t process_kernel_address = KERNEL_END - (curr_pcb->pid * EIGHTKB_BITS);
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = process_kernel_address;
+    tss.esp0 = KERNEL_END - (curr_pcb->pid * EIGHTKB_BITS);
 
-    // save current ebp/esp
+    // save current ebp
     register uint32_t saved_ebp asm("ebp");
     curr_pcb->saved_ebp = saved_ebp;
 
-    // push IRET context on the the correct order
+    // push IRET context on the the correct order and call iret
+    
     asm volatile("    \n\
         pushl %0      \n\
         pushl %1      \n\
@@ -201,28 +236,62 @@ int32_t execute(const uint8_t* command) {
     return 0;
 }
 
+
+/* int32_t read(int32_t fd, void* buf, int32_t nbytes)
+* Inputs: int32_t fd - file descriptor
+*         void* buf - buffer
+*          int32_t nbytes - number of bytes to read
+* Return Value: int32_t -> number of bytes read
+* Function: reads data in from file and buffer
+*/
+    // check for valid arguments
 int32_t read(int32_t fd, void* buf, int32_t nbytes) {
-    if(fd < 0 || fd > MAX_OPEN_FILES
+    if(fd < 0 || fd >= MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
        || curr_pcb->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
-    
-    int32_t bytes = curr_pcb->fds[fd].functions.read(fd,buf,nbytes);
 
-    return bytes;
+    // read if possible
+    if (curr_pcb->fds[fd].functions.read == NULL) {
+        return 0;
+    }
+    //return the number of bytes read
+    return curr_pcb->fds[fd].functions.read(fd, buf, nbytes);
 }
 
+/* int32_t write(int32_t fd, void* buf, int32_t nbytes)
+ *   Inputs:    int32_t fd - file descriptor
+ *              void* buf - buffer
+*               int32_t nbytes - number of bytes to write
+ *   OUTPUTS: none
+ *   RETURN VALUE: -1 if not valid or the numbe number of bytes to writeytes written
+ *   SIDE EFFECTS: Writes to a buffer given the numb
+ */
+    // check for invalid arguments
 int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
-    if (fd < 0 || fd > MAX_OPEN_FILES
+    if (fd < 0 || fd >= MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
        || curr_pcb->fds[fd].flags == FD_AVAIL) {
         return -1;
-    }    
+    }
+
+    // check if the function is null}
+    if (curr_pcb->fds[fd].functions.write == NULL) {
+        return 0;
+    }
+    // return the number of bytes read
     return curr_pcb->fds[fd].functions.write(fd,buf,nbytes);
 }
 
+/* int32_t open(const uint8_t* filename)
+* Inputs: const uint8_t* filename - name of file to open
+* Return Value: int32_t -> file descriptor index
+* Function: opens a file
+*/
 int32_t open(const uint8_t* filename) {
+
+    //check if the file is valid
     dentry_t dentry;
     if (read_dentry_by_name(filename, &dentry) != 0) {
         return -1;
@@ -241,9 +310,13 @@ int32_t open(const uint8_t* filename) {
         return -1;
     }
 
+    //copy file data
+
     curr_pcb->fds[fd_idx].inode = dentry.inode;
     curr_pcb->fds[fd_idx].pos = 0;
     curr_pcb->fds[fd_idx].flags = FD_USED;
+
+    // switch to the right function call given the type
 
     switch (dentry.file_type) {
     case 0:  // RTC
@@ -259,19 +332,35 @@ int32_t open(const uint8_t* filename) {
         return -1;
     }
 
+    // if valid then open the file
+
+    if (curr_pcb->fds[fd_idx].functions.open != NULL) {
+        curr_pcb->fds[fd_idx].functions.open(filename);
+    }
+
     return fd_idx;
 } 
 
-//close the fd and set it to available
+/* int32_t close(int32_t fd)
+* Inputs: int32_t fd - name of file to open
+* Return Value: int32_t -> success/fail
+* Function: closes a file and sets it available
+*/
+    // check for valid arguments
 int32_t close(int32_t fd) {
-    if(fd < 0 || fd > MAX_OPEN_FILES || curr_pcb->fds[fd].flags == FD_AVAIL){
+    if(fd < 0 || fd >= MAX_OPEN_FILES || curr_pcb->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
-    curr_pcb->fds[fd].functions.close(fd);
-    curr_pcb->fds[fd].flags = FD_AVAIL;
 
-    return 0;
+
+    curr_pcb->fds[fd].flags = FD_AVAIL;
+    if (curr_pcb->fds[fd].functions.close == NULL) {
+        return 0;
+    }
+
+    return curr_pcb->fds[fd].functions.close(fd);    
 }
+
 
 int32_t getargs(uint8_t* buf, int32_t nbytes) {
     printf("getargs called - not implemented\n");
