@@ -6,13 +6,65 @@
 #include "rtc.h"
 #include "terminal.h"
 
+// Pointer to current PCB.
 pcb_t* curr_pcb = NULL;
 
-static uint32_t pids[MAXPIDS] = {0};
+// Array of which PIDs are in use or not (1 or 0).
+static uint32_t pids[MAXPIDS];
 
 int32_t halt(uint8_t status) {
-    printf("halt called\n");
-    return 0;
+    // -------- Check if trying to exit base shell --------
+    if (curr_pcb->parent_pcb == NULL) {
+        // Clear base shell PID
+        pids[0] = 0;
+        curr_pcb = NULL;
+
+        // Call shell again
+        const uint8_t cmd[FILENAME_SIZE] = "shell";
+        execute(cmd);
+    
+        return 0;
+    }
+
+    // -------- Restore parent paging --------
+    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->parent_pcb->pid * FOURMB_BITS)) / FOURKB_BITS;
+    flush_tlb();
+
+    // -------- Clear file descriptors --------
+    int i;
+    for (i = 0; i < MAX_OPEN_FILES; i++) {
+        if (curr_pcb->fds[i].flags == FD_USED) {
+            close(i);
+        }
+    }
+
+    // -------- Write parent's process info back to TSS --------
+    uint32_t process_kernel_address = KERNEL_END - (curr_pcb->parent_pcb->pid * EIGHTKB_BITS);
+    tss.ss0 = KERNEL_DS;
+    tss.esp0 = process_kernel_address;
+    
+    // -------- Jump to execute return --------
+    uint32_t saved_ebp = curr_pcb->saved_ebp;
+
+    // Unset current PID in pids and restore curr_pcb
+    pids[curr_pcb->pid] = 0;
+    curr_pcb = curr_pcb->parent_pcb;
+
+    // Switch back to `execute`'s stack by setting ebp to saved_ebp
+    // Return from execute function
+    asm volatile("          \n\
+        movl %0, %%ebp      \n\
+                            \n\
+        movl $0, %%eax      \n\
+        movb %1, %%al       \n\
+        leave               \n\
+        ret                 \n\
+        "
+        :
+        : "r"(saved_ebp), "r"(status)
+    );
+
+    return -1;
 }
 
 int32_t execute(const uint8_t* command) {
@@ -20,13 +72,12 @@ int32_t execute(const uint8_t* command) {
 
     // -------- Parse args -------- //
     
-
     // Get file name from command (text until first space)
     uint8_t file_name[FILENAME_SIZE];
     memset(file_name, 0, sizeof(file_name));
 
     for (i = 0; i < FILENAME_SIZE - 1; i++) {
-        if (command[i] == ' ') {
+        if (command[i] == ' ' || command[i] == '\0') {
             break;
         }
         file_name[i] = command[i];
@@ -81,17 +132,15 @@ int32_t execute(const uint8_t* command) {
         return -1;
     }
 
+    pcb_t* parent_pcb = curr_pcb;
     curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
-    curr_pcb->parent_pid = old_pid;
+    curr_pcb->parent_pcb = parent_pcb;
     curr_pcb->pid = pid;
-    curr_pcb->ebp = (USER_ADDRESS + FOURMB_BITS);
-    curr_pcb->esp = (USER_ADDRESS + FOURMB_BITS);
 
     // -------- Setup Paging -------- //
 
     // make virtual mem map to right physical address
-    uint32_t physical_address = KERNEL_END + (curr_pcb->pid * FOURMB_BITS);
-    page_dir[USER_INDEX].page_table_address = physical_address / FOURKB_BITS;   // UNSURE ABOUT THIS *TEST*
+    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->pid * FOURMB_BITS)) / FOURKB_BITS;
     flush_tlb();
         
     // -------- load file into memory -------- //
@@ -101,7 +150,7 @@ int32_t execute(const uint8_t* command) {
     uint32_t file_size = ((inodes_t *)((uint8_t *)file_system + ((dentry.inode + 1) * (BLOCK_SIZE))))->length;
     read_data(dentry.inode, 0, program_location, file_size);
 
-    uint32_t eip = *((uint32_t*)(program_location + 24));
+    uint32_t eip = *((uint32_t*) (program_location + 24));
 
     // -------- create pcb and open fds -------- //
 
@@ -124,8 +173,6 @@ int32_t execute(const uint8_t* command) {
     curr_pcb->fds[1].functions = make_stdout_fops();
     curr_pcb->fds[1].flags = FD_USED;
 
-    // PID and parent PID already set
-
     // -------- Prepare For Context Switch -------- //
 
     // modify esp0 and ss0 in TSS
@@ -133,9 +180,9 @@ int32_t execute(const uint8_t* command) {
     tss.ss0 = KERNEL_DS;
     tss.esp0 = process_kernel_address;
 
-    // get esp to push to stack
-    asm volatile("mov %%esp, %0" : "=r" (curr_pcb->esp));
-    asm volatile("mov %%ebp, %0" : "=r" (curr_pcb->ebp));
+    // save current ebp/esp
+    register uint32_t saved_ebp asm("ebp");
+    curr_pcb->saved_ebp = saved_ebp;
 
     // push IRET context on the the correct order
     asm volatile("    \n\
@@ -157,19 +204,19 @@ int32_t execute(const uint8_t* command) {
 int32_t read(int32_t fd, void* buf, int32_t nbytes) {
     if(fd < 0 || fd > MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
-       || curr_pcb->fds[fd].flags == FD_AVAIL){
+       || curr_pcb->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
     
     int32_t bytes = curr_pcb->fds[fd].functions.read(fd,buf,nbytes);
-    curr_pcb->fds[fd].pos += bytes;
+
     return bytes;
 }
 
 int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
-    if(fd < 0 || fd > MAX_OPEN_FILES
+    if (fd < 0 || fd > MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
-       || curr_pcb->fds[fd].flags == FD_AVAIL){
+       || curr_pcb->fds[fd].flags == FD_AVAIL) {
         return -1;
     }    
     return curr_pcb->fds[fd].functions.write(fd,buf,nbytes);
@@ -208,9 +255,11 @@ int32_t open(const uint8_t* filename) {
     case 2:  // regular file
         curr_pcb->fds[fd_idx].functions = make_file_fops();
         break;
+    default:
+        return -1;
     }
 
-    return -1;
+    return fd_idx;
 } 
 
 //close the fd and set it to available
@@ -225,21 +274,21 @@ int32_t close(int32_t fd) {
 }
 
 int32_t getargs(uint8_t* buf, int32_t nbytes) {
-    printf("getargs called\n");
-    return 0;
+    printf("getargs called - not implemented\n");
+    return -1;
 }
 
 int32_t vidmap(uint8_t** screen_start) {
-    printf("vidmap called\n");
-    return 0;
+    printf("vidmap called - not implemented\n");
+    return -1;
 }
 
 int32_t set_handler(int32_t signum, void* handler_address) {
-    printf("set_handler called\n");
-    return 0;
+    printf("set_handler called - not implemented\n");
+    return -1;
 }
 
 int32_t sigreturn(void) {
-    printf("sigreturn called\n");
-    return 0;
+    printf("sigreturn calle - not implemented\n");
+    return -1;
 }

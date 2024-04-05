@@ -37,6 +37,13 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
     // find the file (if it exsits by name)
     int i, j, same;
 
+    if(fname[0] == '.') {
+        dentry->file_name[0] = '.';
+        dentry->file_type = file_system->dir_entries[0].file_type;
+        dentry->inode = file_system->dir_entries[0].inode;
+        return 0;
+    }
+
     // check each directory
     for(i = 0; i < file_system->num_dir_entries; i++) {
         
@@ -184,22 +191,25 @@ int32_t file_read(int32_t fd, void* buf, int32_t nbytes) {
 int32_t dir_read(int32_t fd, void* buf, int32_t nbytes) {
     // check for garbage values
     if (buf == NULL) { return -1; }
-    if (fd < 2 || fd >= MAX_OPEN_FILES) { return -1; }
+    if (fd < 0 || fd >= MAX_OPEN_FILES) { return -1; }
     if (curr_pcb == NULL) { return -1; }
 
     // kepp track of the index being printed since once at a time
-    if (curr_pcb->fds[fd].inode > file_system->num_inodes) { return 0; }
-    dentry_t file = file_system->dir_entries[curr_pcb->fds[fd].inode];
+    if (curr_pcb->fds[fd].pos >= file_system->num_dir_entries) { return 0; }
+    dentry_t file = file_system->dir_entries[curr_pcb->fds[fd].pos];
 
     // find the details about the file and write into buffer
     uint8_t * buffer = (uint8_t *) buf;
-    memcpy(buffer, file.file_name, FILENAME_SIZE);
 
     // look at next file
-    // TODO is this necessary
-    curr_pcb->fds[fd].inode++;
+    int i;
+    for(i = 0; file.file_name[i] != '\0' && i < FILENAME_SIZE; i++) {
+        buffer[i] = file.file_name[i];
+    }
 
-    return 0;
+    curr_pcb->fds[fd].pos++;
+
+    return i;
 }
 
 /* does nothing for this checkpoint*/

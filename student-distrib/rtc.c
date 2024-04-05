@@ -52,7 +52,7 @@ void rtc_handler_base(void) {
 
     rtc_interrupt_counter++; //increment for each interrupt   
 
-    if (rtc_interrupt_counter == rtc_ticks_per_interrupt){ 
+    if (rtc_interrupt_counter >= rtc_ticks_per_interrupt){ 
         rtc_interrupt_flag = 1; 
         rtc_interrupt_counter = 0;
     }

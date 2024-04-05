@@ -81,3 +81,21 @@ Checkpoint 3:
 Bug: When entering commands into the shell, the command would get cutoff to only the first 3 characters.
 
 Fix: In the syscall handler's assembly linkage, %eax had to be set to the handler's return value instead of being preserved.
+
+2)
+
+Bug: Page fault when exiting from base shell.
+
+Fix: Had to take care of that special case in halt, and call execute(shell) again.
+
+3)
+
+Bug: Page faults at the end of halt when returning to execute.
+
+Fix: We had to actually understand what "returning to execute" meant, and properly restore ebp.
+
+4)
+
+Bug: File opens weren't working.
+
+Fix: We were accidentally returning -1 instead of the file descriptor # in the open syscall.

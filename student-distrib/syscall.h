@@ -13,7 +13,7 @@
 #define SYSCALL_HANDLER_VEC 0x80
 
 /* Max number of processes */
-#define MAXPIDS 2 
+#define MAXPIDS 2
 
 /* ELF magic constants */ 
 #define ELF_MN_1 0x7f
@@ -35,11 +35,10 @@ typedef struct pcb {
     fd_t fds[MAX_OPEN_FILES];
 
     int32_t pid;        // process ID
-    int32_t parent_pid; // used for context switching 
+    struct pcb* parent_pcb;  // used for context switching 
 
     // information about current process
-    uint32_t esp;
-    uint32_t ebp;
+    uint32_t saved_ebp;
 } pcb_t;
 
 extern pcb_t* curr_pcb;

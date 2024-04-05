@@ -63,11 +63,11 @@ void paging_init() {
     page_dir[0].page_table_address = ((int)page_table) / FOURKB_BITS;
     page_table[VID_MEM_INDEX].present = 1;
     
-    // init kernel by making it present and looking at kenerl address
+    // init kernel by making it present and looking at kernel address
     page_dir[1].present = 1;
     page_dir[1].page_table_address = ((int)KERNEL_ADDRESS) / FOURKB_BITS;
 
-    // init user space (8MB - 12MB & 12MB - 16MB Physical Memory)
+    // init user space at 128 MB physical address
     page_dir[USER_INDEX].present = 1;
     page_dir[USER_INDEX].user_supervisor = 1;
     page_dir[USER_INDEX].page_table_address = ((int)USER_ADDRESS) / FOURKB_BITS;
