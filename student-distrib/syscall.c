@@ -23,33 +23,14 @@ int32_t execute(const uint8_t* command) {
 
     // Get file name from command (text until first space)
     uint8_t file_name[FILENAME_SIZE];
-    memcpy((void*) file_name, (const void*)command, sizeof(uint8_t) * FILENAME_SIZE);
+    memset(file_name, 0, sizeof(file_name));
 
-    if (curr_pcb != NULL) {
-        file_name[0] = 't';
-        file_name[1] = 'e';
-        file_name[2] = 's';
-        file_name[3] = 't';
-        file_name[4] = 'p';
-        file_name[5] = 'r';
-        file_name[6] = 'i';
-        file_name[7] = 'n';
-        file_name[8] = 't';
-        file_name[9] = '\0';
+    for (i = 0; i < FILENAME_SIZE - 1; i++) {
+        if (command[i] == ' ') {
+            break;
+        }
+        file_name[i] = command[i];
     }
-    for (i = 9; i < FILENAME_SIZE; i++) {
-        file_name[i] = '\0';
-    }
-
-    // for (i = 0; i < FILENAME_SIZE - 1; i++) {
-    //     if (command[i] == ' ') {
-    //         i++;
-    //         break;
-    //     }
-    //     file_name[i] = command[i];
-    // }
-
-    // file_name[i] = '\0';  // Null terminate
     
     // -------- Check File Validity -------- //
     dentry_t dentry; 

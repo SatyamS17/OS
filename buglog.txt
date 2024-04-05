@@ -73,3 +73,11 @@ Fix: I was printing NULL terminator so I had to make sure im not putc '/0'
 Bug: Read data would not change buffer at all
 
 Fix: My logic was incorrect because I forgot the inode contains block index and thats how we refrence block data
+
+Checkpoint 3:
+
+1)
+
+Bug: When entering commands into the shell, the command would get cutoff to only the first 3 characters.
+
+Fix: In the syscall handler's assembly linkage, %eax had to be set to the handler's return value instead of being preserved.

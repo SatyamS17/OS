@@ -2,6 +2,7 @@
 
 .globl syscall_handler
 syscall_handler:
+    # Push all registers except for eax, since eax should be set to the handler's return value and not saved.
     pushl   %gs
     pushl   %fs
     pushl   %es
@@ -11,7 +12,6 @@ syscall_handler:
     pushl   %edx
     pushl   %ecx
     pushl   %ebx
-    pushl   %eax
 
     pushl   %edx
     pushl   %ecx
@@ -24,7 +24,6 @@ syscall_handler:
 
     decl    %eax                        # decrement %eax to be zero-indexed for the jump table
     call    *syscall_handler_jumptable(, %eax, 4)
-    incl    %eax
 
     jmp     syscall_handler_ret
 
@@ -34,7 +33,6 @@ syscall_handler_err:
 
 syscall_handler_ret:
     addl    $12, %esp                   # pop args
-    popl    %eax
     popl    %ebx
     popl    %ecx
     popl    %edx
