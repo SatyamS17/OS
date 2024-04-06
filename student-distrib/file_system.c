@@ -37,13 +37,6 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
     // find the file (if it exsits by name)
     int i, j, same;
 
-    if(fname[0] == '.') {
-        dentry->file_name[0] = '.';
-        dentry->file_type = file_system->dir_entries[0].file_type;
-        dentry->inode = file_system->dir_entries[0].inode;
-        return 0;
-    }
-
     // check each directory
     for(i = 0; i < file_system->num_dir_entries; i++) {
         
@@ -57,7 +50,7 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
         }
 
         // move on if not the same
-        if(!same) { continue; }
+        if(!same && fname[0] != '.') { continue; }
 
         // if the same than update dentry argument with file name, type, and inode
         memcpy(dentry->file_name, file_system->dir_entries[i].file_name, FILENAME_SIZE);
@@ -83,15 +76,12 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
 uint32_t read_dentry_by_index (uint32_t index, dentry_t * dentry) {
     // check for garbage values
     if(dentry == NULL) { return -1; }
-    int i;
 
     // check if index is valid
     if(index >= file_system->num_dir_entries || index < 0) { return -1;}
 
     //if the same than update dentry argument with file name, type, and inode
-    for(i = 0; i < FILENAME_SIZE; i++) {
-        dentry->file_name[i] = file_system->dir_entries[index].file_name[i];
-    }    
+    memcpy(dentry->file_name, file_system->dir_entries[index].file_name, FILENAME_SIZE);
     dentry->file_type = file_system->dir_entries[index].file_type;
     dentry->inode = file_system->dir_entries[index].inode;
 
@@ -191,10 +181,10 @@ int32_t file_read(int32_t fd, void* buf, int32_t nbytes) {
 int32_t dir_read(int32_t fd, void* buf, int32_t nbytes) {
     // check for garbage values
     if (buf == NULL) { return -1; }
-    if (fd < 0 || fd >= MAX_OPEN_FILES) { return -1; }
+    if (fd < 2 || fd >= MAX_OPEN_FILES) { return -1; }
     if (curr_pcb == NULL) { return -1; }
 
-    // kepp track of the index being printed since once at a time
+    // keep track of the index being printed since once at a time
     if (curr_pcb->fds[fd].pos >= file_system->num_dir_entries) { return 0; }
     dentry_t file = file_system->dir_entries[curr_pcb->fds[fd].pos];
 
@@ -207,6 +197,7 @@ int32_t dir_read(int32_t fd, void* buf, int32_t nbytes) {
         buffer[i] = file.file_name[i];
     }
 
+    // increase pos to look at next file
     curr_pcb->fds[fd].pos++;
 
     return i;
@@ -221,6 +212,14 @@ int32_t dir_open(const uint8_t* filename) { return 0; }
 int32_t dir_write(int32_t fd, const void* buf, int32_t nbytes) { return 0; }
 int32_t dir_close(int32_t fd) { return 0; }
 
+/* make_file_fops
+ *   DESCRIPTION: Initalizes file functions
+ * 
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: func_pt_t struct of pointers to functions
+ *   SIDE EFFECTS: Creates file functions
+ */
 func_pt_t make_file_fops(void) {
     func_pt_t f;
     f.open = file_open;
@@ -229,6 +228,15 @@ func_pt_t make_file_fops(void) {
     f.write = file_write;
     return f;
 }
+
+/* make_dir_fops
+ *   DESCRIPTION: Initalizes directory functions
+ * 
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: func_pt_t struct of pointers to functions
+ *   SIDE EFFECTS: Creates file functions
+ */
 func_pt_t make_dir_fops(void) {
     func_pt_t f;
     f.open = dir_open;

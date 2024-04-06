@@ -81,6 +81,7 @@ extern int32_t dir_write(int32_t fd, const void* buf, int32_t nbytes);
 extern int32_t dir_open(const uint8_t* filename);
 extern int32_t dir_close(int32_t fd);
 
+/* Function structs */
 extern func_pt_t make_file_fops(void);
 extern func_pt_t make_dir_fops(void);
 

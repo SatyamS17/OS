@@ -6,25 +6,6 @@
 #include "rtc.h"
 #include "terminal.h"
 
-/* Max number of processes */
-#define MAXPIDS 2
-
-/* ELF magic constants */ 
-#define ELF_MN_1 0x7f
-#define ELF_MN_2 0x45 
-#define ELF_MN_3 0x4c
-#define ELF_MN_4 0x46
-
-/* Offset for program image */
-#define USER_OFFSET 0x48000
-
-#define KERNEL_END      0x800000
-#define EIGHTKB_BITS    (FOURKB_BITS * 2)
-#define FOURMB_BITS     0x400000
-
-/* Offset to find EIP in program image */
-#define EIP_OFFSET  24
-
 /* Pointer to current PCB. */
 pcb_t* curr_pcb = NULL;
 
@@ -40,7 +21,8 @@ static uint32_t pids[MAXPIDS];
  *   SIDE EFFECTS: Returns to parent process
  */
 int32_t halt(uint8_t status) {
-    // -------- Check if trying to exit base shell --------
+
+    /* Check if trying to exit base shell */
     if (curr_pcb->parent_pcb == NULL) {
         // Clear base shell PID
         pids[0] = 0;
@@ -53,11 +35,11 @@ int32_t halt(uint8_t status) {
         return 0;
     }
 
-    // -------- Restore parent paging --------
+    /* Restore parent paging */
     page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->parent_pcb->pid * FOURMB_BITS)) / FOURKB_BITS;
     flush_tlb();
 
-    // -------- Clear file descriptors --------
+    /* Clear file descriptors */
     int i;
     for (i = 0; i < MAX_OPEN_FILES; i++) {
         if (curr_pcb->fds[i].flags == FD_USED) {
@@ -65,18 +47,18 @@ int32_t halt(uint8_t status) {
         }
     }
 
-    // -------- Write parent's process info back to TSS --------
+    /* Write parent's process info back to TSS */
     tss.ss0 = KERNEL_DS;
     tss.esp0 = KERNEL_END - (curr_pcb->parent_pcb->pid * EIGHTKB_BITS);
     
-    // -------- Jump to execute return --------
+    /* Jump to execute return */
     uint32_t saved_ebp = curr_pcb->saved_ebp;
 
-    // Unset current PID in pids and restore curr_pcb
+    /* Unset current PID in pids and restore curr_pcb */
     pids[curr_pcb->pid] = 0;
     curr_pcb = curr_pcb->parent_pcb;
 
-    // Switch back to `execute`'s stack by setting ebp to saved_ebp
+    /* Switch back to `execute`'s stack by setting ebp to saved_ebp */
     // Return from execute function
     asm volatile("          \n\
         movl %0, %%ebp      \n\
@@ -105,12 +87,12 @@ int32_t halt(uint8_t status) {
 int32_t execute(const uint8_t* command) {
     int i;
 
-    // -------- Parse args -------- //
-    
+    /* Parse args */
     // Get file name from command (text until first space)
     uint8_t file_name[FILENAME_SIZE];
     memset(file_name, 0, sizeof(file_name));
 
+    // get the command
     for (i = 0; i < FILENAME_SIZE - 1; i++) {
         if (command[i] == ' ' || command[i] == '\0') {
             break;
@@ -118,7 +100,7 @@ int32_t execute(const uint8_t* command) {
         file_name[i] = command[i];
     }
     
-    // -------- Check File Validity -------- //
+    /* Check File Validity */
     dentry_t dentry; 
     
     //file doesn't exist check 
@@ -144,7 +126,7 @@ int32_t execute(const uint8_t* command) {
         return -1;
     }
 
-    // -------- Find PID -------- /
+    /* Find PID */
     int32_t old_pid;
     if (curr_pcb == NULL) {
         old_pid = -1;
@@ -167,18 +149,19 @@ int32_t execute(const uint8_t* command) {
         return -1;
     }
 
+    //update parent and current pcb
     pcb_t* parent_pcb = curr_pcb;
     curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
     curr_pcb->parent_pcb = parent_pcb;
     curr_pcb->pid = pid;
 
-    // -------- Setup Paging -------- //
+    /* Setup Paging */
 
     // make virtual mem map to right physical address
     page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->pid * FOURMB_BITS)) / FOURKB_BITS;
     flush_tlb();
         
-    // -------- load file into memory -------- //
+    /* Load file into memory */
 
     // know it's an executable now copy to physical address
     uint8_t* program_location = (uint8_t*) (USER_ADDRESS + USER_OFFSET);
@@ -187,7 +170,7 @@ int32_t execute(const uint8_t* command) {
 
     uint32_t eip = *((uint32_t*) (program_location + EIP_OFFSET));
 
-    // -------- create pcb and open fds -------- //
+    /* Create pcb and clear fds */
 
     // Clear all FDs
     for (i = 0; i < MAX_OPEN_FILES; i++) {
@@ -208,18 +191,16 @@ int32_t execute(const uint8_t* command) {
     curr_pcb->fds[1].functions = make_stdout_fops();
     curr_pcb->fds[1].flags = FD_USED;
 
-    // -------- Prepare For Context Switch -------- //
+    /* Prepare For Context Switch */
+    // save current ebp
+    register uint32_t saved_ebp asm("ebp");
+    curr_pcb->saved_ebp = saved_ebp;
 
     // modify esp0 and ss0 in TSS
     tss.ss0 = KERNEL_DS;
     tss.esp0 = KERNEL_END - (curr_pcb->pid * EIGHTKB_BITS);
 
-    // save current ebp
-    register uint32_t saved_ebp asm("ebp");
-    curr_pcb->saved_ebp = saved_ebp;
-
     // push IRET context on the the correct order and call iret
-    
     asm volatile("    \n\
         pushl %0      \n\
         pushl %1      \n\
@@ -244,8 +225,8 @@ int32_t execute(const uint8_t* command) {
 * Return Value: int32_t -> number of bytes read
 * Function: reads data in from file and buffer
 */
-    // check for valid arguments
 int32_t read(int32_t fd, void* buf, int32_t nbytes) {
+    // check for invalid arguments
     if(fd < 0 || fd >= MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
        || curr_pcb->fds[fd].flags == FD_AVAIL) {
@@ -268,8 +249,8 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
  *   RETURN VALUE: -1 if not valid or the numbe number of bytes to writeytes written
  *   SIDE EFFECTS: Writes to a buffer given the numb
  */
-    // check for invalid arguments
 int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
+    // check for invalid arguments
     if (fd < 0 || fd >= MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
        || curr_pcb->fds[fd].flags == FD_AVAIL) {
@@ -311,13 +292,11 @@ int32_t open(const uint8_t* filename) {
     }
 
     //copy file data
-
     curr_pcb->fds[fd_idx].inode = dentry.inode;
     curr_pcb->fds[fd_idx].pos = 0;
     curr_pcb->fds[fd_idx].flags = FD_USED;
 
     // switch to the right function call given the type
-
     switch (dentry.file_type) {
     case 0:  // RTC
         curr_pcb->fds[fd_idx].functions = make_rtc_fops();    
@@ -333,7 +312,6 @@ int32_t open(const uint8_t* filename) {
     }
 
     // if valid then open the file
-
     if (curr_pcb->fds[fd_idx].functions.open != NULL) {
         curr_pcb->fds[fd_idx].functions.open(filename);
     }
@@ -346,22 +324,23 @@ int32_t open(const uint8_t* filename) {
 * Return Value: int32_t -> success/fail
 * Function: closes a file and sets it available
 */
-    // check for valid arguments
 int32_t close(int32_t fd) {
+    // check for valid arguments
     if(fd < 0 || fd >= MAX_OPEN_FILES || curr_pcb->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
 
-
+    // make the flag as avaliable
     curr_pcb->fds[fd].flags = FD_AVAIL;
     if (curr_pcb->fds[fd].functions.close == NULL) {
         return 0;
     }
 
+    //close the file
     return curr_pcb->fds[fd].functions.close(fd);    
 }
 
-
+/* SYSCALLS NOT IMPLEMENTED FOR THIS CHECKPOINT!*/
 int32_t getargs(uint8_t* buf, int32_t nbytes) {
     printf("getargs called - not implemented\n");
     return -1;
