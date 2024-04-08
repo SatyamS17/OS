@@ -21,6 +21,14 @@ static uint32_t pids[MAXPIDS];
  *   SIDE EFFECTS: Returns to parent process
  */
 int32_t halt(uint8_t status) {
+    // If status = 256, an exception has occured and 256 should be returned from `execute`,
+    // but.. status is a uint8_t so 256 wraps to 0.
+    //
+    // Instead, we manually store a flag of if an exception has occured.
+    uint32_t status_32 = (uint32_t) status;
+    if (curr_pcb->exception_occured) {
+        status_32 = 256;
+    }
 
     /* Check if trying to exit base shell */
     if (curr_pcb->parent_pcb == NULL) {
@@ -63,13 +71,12 @@ int32_t halt(uint8_t status) {
     asm volatile("          \n\
         movl %0, %%ebp      \n\
                             \n\
-        movl $0, %%eax      \n\
-        movb %1, %%al       \n\
+        movl %1, %%eax      \n\
         leave               \n\
         ret                 \n\
         "
         :
-        : "r"(saved_ebp), "r"(status)
+        : "r"(saved_ebp), "r"(status_32)
     );
 
     return -1;
@@ -152,8 +159,9 @@ int32_t execute(const uint8_t* command) {
     //update parent and current pcb
     pcb_t* parent_pcb = curr_pcb;
     curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
-    curr_pcb->parent_pcb = parent_pcb;
     curr_pcb->pid = pid;
+    curr_pcb->parent_pcb = parent_pcb;
+    curr_pcb->exception_occured = 0;
 
     /* Setup Paging */
 
@@ -341,9 +349,10 @@ int32_t close(int32_t fd) {
 }
 
 /* SYSCALLS NOT IMPLEMENTED FOR THIS CHECKPOINT!*/
+
 int32_t getargs(uint8_t* buf, int32_t nbytes) {
     printf("getargs called - not implemented\n");
-    return -1;
+    return 0;
 }
 
 int32_t vidmap(uint8_t** screen_start) {

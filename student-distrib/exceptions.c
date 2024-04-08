@@ -1,12 +1,14 @@
 #include "exceptions.h"
 
 #include "lib.h"
+#include "syscall.h"
 
 #define EXCEPTION_HANDLER(name, msg)               \
 void name(void) {                                  \
     clear();                                       \
     printf(":( encountered an error: " msg "\n");  \
-    while (1) {}                                   \
+    curr_pcb->exception_occured = 1;               \
+    halt(0);                                       \
 }
 
 EXCEPTION_HANDLER(divide_error_exception_handler_base, "divide error exception")
