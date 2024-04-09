@@ -44,7 +44,7 @@ int32_t halt(uint8_t status) {
     }
 
     /* Restore parent paging */
-    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->parent_pcb->pid * FOURMB_BITS)) / FOURKB_BITS;
+    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->parent_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
     flush_tlb();
 
     /* Clear file descriptors */
@@ -166,7 +166,7 @@ int32_t execute(const uint8_t* command) {
     /* Setup Paging */
 
     // make virtual mem map to right physical address
-    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->pid * FOURMB_BITS)) / FOURKB_BITS;
+    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
     flush_tlb();
         
     /* Load file into memory */

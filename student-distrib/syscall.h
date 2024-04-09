@@ -34,6 +34,9 @@
 /* Max open file descriptors for a process */
 #define MAX_OPEN_FILES  8
 
+/* Use to get the base address */
+#define ADDRESS_SHIFT       12
+
 /* PCB Struct*/
 typedef struct pcb {
     fd_t fds[MAX_OPEN_FILES];

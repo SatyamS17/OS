@@ -12,6 +12,9 @@
 /* Number of bits in a 4KB */
 #define FOURKB_BITS         (PAGE_NUM * 4)
 
+/* Use to get the base address */
+#define ADDRESS_SHIFT       12
+
 /* Starting address given to us in documentation*/
 #define KERNEL_ADDRESS      0x400000
 
