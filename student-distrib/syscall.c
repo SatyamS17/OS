@@ -258,7 +258,7 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
 
     // read if possible
     if (curr_pcb->fds[fd].functions.read == NULL) {
-        return 0;
+        return -1;
     }
     //return the number of bytes read
     uint32_t val = curr_pcb->fds[fd].functions.read(fd, buf, nbytes);
@@ -283,7 +283,7 @@ int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
 
     // check if the function is null}
     if (curr_pcb->fds[fd].functions.write == NULL) {
-        return 0;
+        return -1;
     }
     // return the number of bytes read
     return curr_pcb->fds[fd].functions.write(fd,buf,nbytes);
@@ -359,15 +359,17 @@ int32_t close(int32_t fd) {
     }
 
     //close the file
-    uint32_t ret = curr_pcb->fds[fd].functions.close(fd);
-
-    curr_pcb->fds[fd].functions.open = NULL;
-    curr_pcb->fds[fd].functions.close = NULL;
-    curr_pcb->fds[fd].functions.read = NULL;
-    curr_pcb->fds[fd].functions.write = NULL;
-    curr_pcb->fds[fd].inode = 0;
-    curr_pcb->fds[fd].pos = 0;
-    curr_pcb->fds[fd].flags = FD_AVAIL;
+    int32_t ret = curr_pcb->fds[fd].functions.close(fd);
+    
+    if (ret != -1) {
+        curr_pcb->fds[fd].functions.open = NULL;
+        curr_pcb->fds[fd].functions.close = NULL;
+        curr_pcb->fds[fd].functions.read = NULL;
+        curr_pcb->fds[fd].functions.write = NULL;
+        curr_pcb->fds[fd].inode = 0;
+        curr_pcb->fds[fd].pos = 0;
+        curr_pcb->fds[fd].flags = FD_AVAIL;
+    }
 
     return ret;
 }

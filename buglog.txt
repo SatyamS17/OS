@@ -116,12 +116,18 @@ Fix: Fixed string comparison edge cases when checking if a file exists.
 
 3)
 
-Bug: fish would not print anything but something would run in the background
+Bug: fish would not print anything but something would run in the background.
 
-Fix: Forgot to change the page size to 4KB in the page directory so it wouldn't acess the page table
+Fix: Forgot to change the page size to 4KB in the page directory so it wouldn't acess the page table.
 
 4)
 
-Bug: fish would not print only / and I and the rest would be blank
+Bug: fish would not print only / and I and the rest would be blank.
 
-Fix: If statment in read_data would make it break out of the loop so the read_count would be zero
+Fix: If statment in read_data would make it break out of the loop so the read_count would be zero.
+
+5)
+
+Bug: syserr test #5 didn't work (didn't print anything).
+
+Fix: Closing the stdin file descriptor accidentally marked the fd as available, stopping anything from printing.
