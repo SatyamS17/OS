@@ -95,21 +95,35 @@ int32_t execute(const uint8_t* command) {
     int i;
 
     /* Parse args */
-    // Get file name from command (text until first space)
     uint8_t file_name[FILENAME_SIZE];
+    uint8_t args[FILENAME_SIZE];
     memset(file_name, 0, sizeof(file_name));
+    memset(args, 0, sizeof(args));
 
-    // get the command
-    for (i = 0; i < FILENAME_SIZE - 1; i++) {
-        if (command[i] == ' ' || command[i] == '\0') {
+    // Skip any spaces at the start
+    int command_idx = 0;
+    while (command[command_idx] == ' ') { command_idx++; }
+
+    // Get the command
+    for (i = 0; command_idx < FILENAME_SIZE - 1; i++, command_idx++) {
+        if (command[command_idx] == ' ' || command[command_idx] == '\0') {
             break;
         }
-        file_name[i] = command[i];
+        file_name[i] = command[command_idx];
     }
-    
+
+    while (command[command_idx] == ' ') { command_idx++; }
+
+    for (i = 0; command_idx < FILENAME_SIZE - 1; i++, command_idx++) {
+        if (command[command_idx] == '\0') {
+            break;
+        }
+        args[i] = command[command_idx];
+    }
+
     /* Check File Validity */
-    dentry_t dentry; 
-    
+    dentry_t dentry;
+
     //file doesn't exist check 
     if (read_dentry_by_name(file_name, &dentry) == -1) {
         printf("Error: Command `%s` doesn't exist\n", file_name);
@@ -161,6 +175,7 @@ int32_t execute(const uint8_t* command) {
     curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
     curr_pcb->pid = pid;
     curr_pcb->parent_pcb = parent_pcb;
+    memcpy(curr_pcb->args, args, sizeof(args));
     curr_pcb->exception_occured = 0;
 
     /* Setup Paging */
@@ -348,11 +363,18 @@ int32_t close(int32_t fd) {
     return curr_pcb->fds[fd].functions.close(fd);    
 }
 
-/* SYSCALLS NOT IMPLEMENTED FOR THIS CHECKPOINT!*/
+/* SYSCALLS NOT IMPLEMENTED FOR THIS CHECKPOINT! */
 
 int32_t getargs(uint8_t* buf, int32_t nbytes) {
-    printf("getargs called - not implemented\n");
-    return 0;
+    int i;
+    for (i = 0; i < FILENAME_SIZE; i++) {
+        buf[i] = curr_pcb->args[i];
+        if (buf[i] == '\0') {
+            return 0;
+        }
+    }
+
+    return -1;
 }
 
 int32_t vidmap(uint8_t** screen_start) {

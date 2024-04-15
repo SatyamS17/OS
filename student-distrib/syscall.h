@@ -47,6 +47,9 @@ typedef struct pcb {
     // information about current process
     uint32_t saved_ebp;
 
+    // Argument passed into shell
+    uint8_t args[FILENAME_SIZE];
+
     // Boolean flag for if an exception has occured in this process or not.
     int32_t exception_occured;
 } pcb_t;
