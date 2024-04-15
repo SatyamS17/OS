@@ -5,6 +5,7 @@
 #ifndef _SYSCALL_H
 #define _SYSCALL_H
 
+#include "keyboard.h"
 #include "file_system.h"
 #include "types.h"
 #include "x86_desc.h"
@@ -13,7 +14,7 @@
 #define SYSCALL_HANDLER_VEC 0x80
 
 /* Max number of processes */
-#define MAXPIDS 2
+#define MAXPIDS 3
 
 /* ELF magic constants */ 
 #define ELF_MN_1 0x7f
@@ -48,7 +49,7 @@ typedef struct pcb {
     uint32_t saved_ebp;
 
     // Argument passed into shell
-    uint8_t args[FILENAME_SIZE];
+    uint8_t args[BUFFER_SIZE];
 
     // Boolean flag for if an exception has occured in this process or not.
     int32_t exception_occured;

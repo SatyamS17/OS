@@ -95,8 +95,8 @@ int32_t execute(const uint8_t* command) {
     int i;
 
     /* Parse args */
-    uint8_t file_name[FILENAME_SIZE];
-    uint8_t args[FILENAME_SIZE];
+    uint8_t file_name[BUFFER_SIZE];
+    uint8_t args[BUFFER_SIZE];
     memset(file_name, 0, sizeof(file_name));
     memset(args, 0, sizeof(args));
 
@@ -105,7 +105,7 @@ int32_t execute(const uint8_t* command) {
     while (command[command_idx] == ' ') { command_idx++; }
 
     // Get the command
-    for (i = 0; command_idx < FILENAME_SIZE - 1; i++, command_idx++) {
+    for (i = 0; i < BUFFER_SIZE - 1; i++, command_idx++) {
         if (command[command_idx] == ' ' || command[command_idx] == '\0') {
             break;
         }
@@ -114,7 +114,7 @@ int32_t execute(const uint8_t* command) {
 
     while (command[command_idx] == ' ') { command_idx++; }
 
-    for (i = 0; command_idx < FILENAME_SIZE - 1; i++, command_idx++) {
+    for (i = 0; i < BUFFER_SIZE - 1; i++, command_idx++) {
         if (command[command_idx] == '\0') {
             break;
         }
@@ -203,7 +203,7 @@ int32_t execute(const uint8_t* command) {
         curr_pcb->fds[i].functions.write = NULL;
         curr_pcb->fds[i].inode = 0;
         curr_pcb->fds[i].pos = 0;
-        curr_pcb->fds[i].flags = FD_AVAIL;   
+        curr_pcb->fds[i].flags = FD_AVAIL;
     }
 
     // Set FD 0 to stdin
@@ -322,7 +322,7 @@ int32_t open(const uint8_t* filename) {
     // switch to the right function call given the type
     switch (dentry.file_type) {
     case 0:  // RTC
-        curr_pcb->fds[fd_idx].functions = make_rtc_fops();    
+        curr_pcb->fds[fd_idx].functions = make_rtc_fops();
         break;
     case 1:  // directory
         curr_pcb->fds[fd_idx].functions = make_dir_fops();
@@ -353,28 +353,31 @@ int32_t close(int32_t fd) {
         return -1;
     }
 
-    // make the flag as avaliable
-    curr_pcb->fds[fd].flags = FD_AVAIL;
     if (curr_pcb->fds[fd].functions.close == NULL) {
         return 0;
     }
 
     //close the file
-    return curr_pcb->fds[fd].functions.close(fd);    
+    uint32_t ret = curr_pcb->fds[fd].functions.close(fd);
+
+    curr_pcb->fds[fd].functions.open = NULL;
+    curr_pcb->fds[fd].functions.close = NULL;
+    curr_pcb->fds[fd].functions.read = NULL;
+    curr_pcb->fds[fd].functions.write = NULL;
+    curr_pcb->fds[fd].inode = 0;
+    curr_pcb->fds[fd].pos = 0;
+    curr_pcb->fds[fd].flags = FD_AVAIL;
+
+    return ret;
 }
 
-/* SYSCALLS NOT IMPLEMENTED FOR THIS CHECKPOINT! */
-
 int32_t getargs(uint8_t* buf, int32_t nbytes) {
-    int i;
-    for (i = 0; i < FILENAME_SIZE; i++) {
-        buf[i] = curr_pcb->args[i];
-        if (buf[i] == '\0') {
-            return 0;
-        }
+    if (buf == NULL || curr_pcb->args[0] == '\0') {
+        return -1;
     }
 
-    return -1;
+    strncpy((int8_t*) buf, (const int8_t*) curr_pcb->args, nbytes);
+    return 0;
 }
 
 int32_t vidmap(uint8_t** screen_start) {

@@ -35,22 +35,19 @@ uint32_t read_dentry_by_name (const uint8_t* fname, dentry_t * dentry) {
     if (dentry == NULL || fname == NULL) { return -1; }
 
     // find the file (if it exsits by name)
-    int i, j, same;
+    int i;
 
     // check each directory
     for(i = 0; i < file_system->num_dir_entries; i++) {
-        
-        // compare file names and keep track of flag
-        same = 1;
-        for(j = 0; j < FILENAME_SIZE; j++) {
-            if(fname[j] != file_system->dir_entries[i].file_name[j]) {
-                same = 0;
-                break;
-            }
-        }
+        uint32_t len1 = strlen((const int8_t*) file_system->dir_entries[i].file_name);
+        uint32_t len2 = strlen((const int8_t*) fname);
 
-        // move on if not the same
-        if(!same && fname[0] != '.') { continue; }
+        if (len2 != FILENAME_SIZE && len1 != len2) {
+            continue;
+        }
+        if (strncmp((const int8_t*) fname, (const int8_t*) file_system->dir_entries[i].file_name, len2) != 0) {
+            continue;
+        }
 
         // if the same than update dentry argument with file name, type, and inode
         memcpy(dentry->file_name, file_system->dir_entries[i].file_name, FILENAME_SIZE);
@@ -105,7 +102,7 @@ uint32_t read_data(uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t lengt
     uint32_t read_count = 0;
 
     // check if inode index is valid
-    if(inode >= file_system->num_inodes || inode < 0) {return -1;}
+    if (inode >= file_system->num_inodes || inode < 2) { return -1; }
 
     //calulcate starting point
     inode_block_index = (uint32_t)(offset / BLOCK_SIZE);
@@ -121,8 +118,11 @@ uint32_t read_data(uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t lengt
     block_index = file_inode->data_block[inode_block_index];
 
     // keep copying data until EOF or desired length is reached
-    while(length > 0) {
-        length--;
+    int i;
+    for (i = 0; i < length; i++) {
+        if (read_count + offset >= length) {
+            break;
+        }
         
         //copy data over to the buffer
         buf[read_count] = (data_block[block_index]).data[data_index];
@@ -165,7 +165,9 @@ int32_t file_read(int32_t fd, void* buf, int32_t nbytes) {
     if (curr_pcb == NULL) { return -1; }
 
     // will this cause a problem if len is too long?
-    return read_data(curr_pcb->fds[fd].inode, curr_pcb->fds[fd].pos, buf, nbytes);
+    uint32_t ret = read_data(curr_pcb->fds[fd].inode, curr_pcb->fds[fd].pos, buf, nbytes);
+    curr_pcb->fds[fd].pos += ret;
+    return ret;
 }
 
 /* d_read
