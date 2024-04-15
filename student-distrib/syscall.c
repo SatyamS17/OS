@@ -371,6 +371,12 @@ int32_t close(int32_t fd) {
     return ret;
 }
 
+/* int32_t getargs(uint8_t* buf, int32_t nbytes)
+* Inputs: uint8_t* buf - buffer to write to
+*         int32_t nbytes - number of bytes to write
+* Return Value: int32_t -> success/fail
+* Function: copies shell arguments into given buffer
+*/
 int32_t getargs(uint8_t* buf, int32_t nbytes) {
     if (buf == NULL || curr_pcb->args[0] == '\0') {
         return -1;

@@ -99,3 +99,17 @@ Fix: We had to actually understand what "returning to execute" meant, and proper
 Bug: File opens weren't working.
 
 Fix: We were accidentally returning -1 instead of the file descriptor # in the open syscall.
+
+Checkpoint 4:
+
+1)
+
+Bug: Running `cat` would print the file an infinite number of times.
+
+Fix: Had some issues with the file object's offset not being accounted for when reading a file.
+
+2)
+
+Bug: `syserr` would fail - running `shel` instead of `shell` worked.
+
+Fix: Fixed string comparison edge cases when checking if a file exists.
