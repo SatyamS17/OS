@@ -120,7 +120,7 @@ uint32_t read_data(uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t lengt
     // keep copying data until EOF or desired length is reached
     int i;
     for (i = 0; i < length; i++) {
-        if (read_count + offset >= length) {
+        if (read_count + offset >= file_inode->length) {
             break;
         }
         
@@ -162,7 +162,6 @@ int32_t file_read(int32_t fd, void* buf, int32_t nbytes) {
     // check for garbage values
     if (buf == NULL) { return -1; }
     if (fd < 2 || fd >= MAX_OPEN_FILES) { return -1; }
-    if (curr_pcb == NULL) { return -1; }
 
     // will this cause a problem if len is too long?
     uint32_t ret = read_data(curr_pcb->fds[fd].inode, curr_pcb->fds[fd].pos, buf, nbytes);

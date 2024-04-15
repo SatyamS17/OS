@@ -113,3 +113,15 @@ Fix: Had some issues with the file object's offset not being accounted for when 
 Bug: `syserr` would fail - running `shel` instead of `shell` worked.
 
 Fix: Fixed string comparison edge cases when checking if a file exists.
+
+3)
+
+Bug: fish would not print anything but something would run in the background
+
+Fix: Forgot to change the page size to 4KB in the page directory so it wouldn't acess the page table
+
+4)
+
+Bug: fish would not print only / and I and the rest would be blank
+
+Fix: If statment in read_data would make it break out of the loop so the read_count would be zero

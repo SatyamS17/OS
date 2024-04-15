@@ -261,7 +261,8 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
         return 0;
     }
     //return the number of bytes read
-    return curr_pcb->fds[fd].functions.read(fd, buf, nbytes);
+    uint32_t val = curr_pcb->fds[fd].functions.read(fd, buf, nbytes);
+    return val;
 }
 
 /* int32_t write(int32_t fd, void* buf, int32_t nbytes)
@@ -386,11 +387,27 @@ int32_t getargs(uint8_t* buf, int32_t nbytes) {
     return 0;
 }
 
+/* int32_t vidmap(uint8_t** screen_start)
+* Inputs: uint8_t** screen_start - pointer to vid memory address
+* Return Value: 0 if worked or -1 if failed
+* Function: Saves vid mem into the screen start pointer
+*/
 int32_t vidmap(uint8_t** screen_start) {
-    printf("vidmap called - not implemented\n");
-    return -1;
+    
+    // check for garbage values?
+    if(screen_start == NULL) {return -1;}
+
+    // make sure it falls under the user space
+    if((uint32_t)screen_start < USER_ADDRESS || 
+    (uint32_t)screen_start > (USER_ADDRESS + FOURMB_BITS)) {return -1;}
+    
+    // update value in screen start to point to video mem
+    *screen_start = (uint8_t*)VIRTUAL_VID_MEM;
+
+    return 0;
 }
 
+// EC TO DO LATER!
 int32_t set_handler(int32_t signum, void* handler_address) {
     printf("set_handler called - not implemented\n");
     return -1;

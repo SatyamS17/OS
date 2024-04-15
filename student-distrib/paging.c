@@ -55,6 +55,19 @@ void paging_init() {
         page_table[i].global_page = 0;
         page_table[i].available = 0;
         page_table[i].base_address = i;
+
+        // init video memory page table
+        uservid_page_table[i].present = 0;
+        uservid_page_table[i].read_write = 1;
+        uservid_page_table[i].user_supervisor = 0;
+        uservid_page_table[i].write_through = 0;
+        uservid_page_table[i].cache_disabled = 0;
+        uservid_page_table[i].accessed = 0;
+        uservid_page_table[i].dirty = 0;
+        uservid_page_table[i].page_attribute = 0;
+        uservid_page_table[i].global_page = 0;
+        uservid_page_table[i].available = 0;
+        uservid_page_table[i].base_address = i;
     }
 
     // init video memory (4KB) by setting it as present in both the table and directory
@@ -71,6 +84,16 @@ void paging_init() {
     page_dir[USER_INDEX].present = 1;
     page_dir[USER_INDEX].user_supervisor = 1;
     page_dir[USER_INDEX].page_table_address = ((int)USER_ADDRESS) >> ADDRESS_SHIFT;
+
+    // update page table/dir with new mapping for a 4KB page
+    page_dir[USER_VID_INDEX].page_size = 0;
+    page_dir[USER_VID_INDEX].present = 1;
+    page_dir[USER_VID_INDEX].user_supervisor = 1;
+    page_dir[USER_VID_INDEX].page_table_address = ((int)uservid_page_table) >> ADDRESS_SHIFT;;
+
+    uservid_page_table[0].user_supervisor = 1;
+    uservid_page_table[0].present = 1;
+    uservid_page_table[0].base_address = VID_MEM_INDEX;
 
     /* updating registers to init paging (CRO, CR3, CR4)*/
     init_preg((int)page_dir);

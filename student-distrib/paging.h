@@ -19,10 +19,19 @@
 #define KERNEL_ADDRESS      0x400000
 
 /* Video memory address in table */
+#define VID_MEM             0xB8000
+
+/* Video memory address in table */
 #define VID_MEM_INDEX       (0xB8000 / FOURKB_BITS)
 
 /* Video memory address in table */
+#define VIRTUAL_VID_MEM     0x8400000
+
+/* Video memory address in table */
 #define USER_INDEX          32
+
+/* Video memory address in table */
+#define USER_VID_INDEX      33
 
 /* Starting address given to us in documentation*/
 #define USER_ADDRESS        0x8000000

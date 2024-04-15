@@ -126,3 +126,9 @@ page_table:
     .rept 1024
     .long 0
     .endr
+
+.align 4096
+uservid_page_table:
+    .rept 1024
+    .long 0
+    .endr
