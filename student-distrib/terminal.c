@@ -2,17 +2,48 @@
 
 #include "keyboard.h"
 #include "lib.h"
+#include "paging.h"
 
-/* Buffer for characters entered. */
-static keyboard_buffer_t kb_buffer;
+#define NUM_TERMINALS 3
 
-/* void terminal_init_buffer(void)
- * Inputs: const uint8_t* filename - name of file
+static terminal_state_t terminals[NUM_TERMINALS];
+static int32_t terminal_idx;
+
+/* void terminal_init(void)
+ * Inputs: None
  * Return Value: int32_t 0 or -1 for success or fail
  * Function: initializes terminal buffer
  */
-void terminal_init_buffer(void) {
-    keyboard_set_buffer(&kb_buffer);
+void terminal_init(void) {
+    int i;
+    for (i = 0; i < NUM_TERMINALS; i++) {
+        memset(terminals[i].kb_buffer.buf, 0, BUFFER_SIZE);
+        terminals[i].kb_buffer.idx = 0;
+        terminals[i].kb_buffer.data_available = 0;
+        terminals[i].cursor_x = 0;
+        terminals[i].cursor_y = 0;
+    }
+
+    keyboard_set_buffer(&terminals[0].kb_buffer);
+}
+
+void terminal_switch(int32_t idx) {
+    if (idx < 0 || idx >= NUM_TERMINALS || idx == terminal_idx) {
+        return;
+    }
+
+    keyboard_set_buffer(&terminals[idx].kb_buffer);
+
+    //save curr terminal screen to assigned video page
+    memcpy((void*) (VID_MEM + ((terminal_idx + 1) * FOURKB_BITS)), (void*) VID_MEM, FOURKB_BITS);
+    terminals[terminal_idx].cursor_x = getScreenX();
+    terminals[terminal_idx].cursor_y = getScreenY();
+    
+    //restore next terminal screen to video memory
+    memcpy((void*) VID_MEM, (void*) (VID_MEM + ((idx + 1) * FOURKB_BITS)), FOURKB_BITS);
+    set_cursor(terminals[idx].cursor_x, terminals[idx].cursor_y);
+
+    terminal_idx = idx;
 }
 
 /* int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes)
@@ -24,7 +55,7 @@ void terminal_init_buffer(void) {
  */
 int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
     // Wait until enter key pressed.
-    while (!kb_buffer.data_available) { }
+    while (!terminals[terminal_idx].kb_buffer.data_available) { }
 
     unsigned long flags;
     cli_and_save(flags);
@@ -33,17 +64,17 @@ int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
 
     int bytes_read;
     for (bytes_read = 0; bytes_read < nbytes && bytes_read < BUFFER_SIZE; bytes_read++) {
-        if (kb_buffer.buf[bytes_read] == '\n') {
+        if (terminals[terminal_idx].kb_buffer.buf[bytes_read] == '\n') {
             break;
         }
-        buf_char[bytes_read] = kb_buffer.buf[bytes_read];
+        buf_char[bytes_read] = terminals[terminal_idx].kb_buffer.buf[bytes_read];
     }
 
     buf_char[bytes_read++] = '\n';
 
-    memset(kb_buffer.buf, 0, BUFFER_SIZE);
-    kb_buffer.idx = 0;
-    kb_buffer.data_available = 0;
+    memset(terminals[terminal_idx].kb_buffer.buf, 0, BUFFER_SIZE);
+    terminals[terminal_idx].kb_buffer.idx = 0;
+    terminals[terminal_idx].kb_buffer.data_available = 0;
 
     restore_flags(flags);
     return bytes_read;

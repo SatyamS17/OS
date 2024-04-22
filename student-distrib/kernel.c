@@ -150,7 +150,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
     keyboard_init();
     rtc_init();
-    terminal_init_buffer();
+    terminal_init();
 
     /* Init file_system */
     file_system_init((uint32_t *)((module_t*)mbi->mods_addr)->mod_start);
@@ -174,7 +174,6 @@ void entry(unsigned long magic, unsigned long addr) {
 
 #endif
     /* Execute the first program ("shell") ... */
-
     clear();
 
     // Execute shell by

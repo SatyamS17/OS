@@ -74,13 +74,19 @@ void paging_init() {
     page_dir[0].present = 1;
     page_dir[0].page_size = 0;
     page_dir[0].page_table_address = ((int)page_table) >> ADDRESS_SHIFT;
+    
     page_table[VID_MEM_INDEX].present = 1;
+
+    // temrminal pages
+    page_table[VID_MEM1_INDEX].present = 1;
+    page_table[VID_MEM2_INDEX].present = 1;
+    page_table[VID_MEM3_INDEX].present = 1;
     
     // init kernel by making it present and looking at kernel address
     page_dir[1].present = 1;
     page_dir[1].page_table_address = ((int)KERNEL_ADDRESS) >> ADDRESS_SHIFT;
 
-    // init user space at 128 MB physical address
+    // init user space at 128 MB virtual address
     page_dir[USER_INDEX].present = 1;
     page_dir[USER_INDEX].user_supervisor = 1;
     page_dir[USER_INDEX].page_table_address = ((int)USER_ADDRESS) >> ADDRESS_SHIFT;

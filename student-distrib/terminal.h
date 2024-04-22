@@ -3,8 +3,17 @@
 
 #include "types.h"
 #include "file_system.h"
+#include "keyboard.h"
 
-extern void terminal_init_buffer(void);
+typedef struct terminal_state {
+    keyboard_buffer_t kb_buffer;
+    int cursor_x;
+    int cursor_y;
+} terminal_state_t;
+
+extern void terminal_init(void);
+
+extern void terminal_switch(int32_t idx);
 
 extern int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes);
 extern int32_t terminal_write(int32_t fd, const void* buf, int32_t nbytes);

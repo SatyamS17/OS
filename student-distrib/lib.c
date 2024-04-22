@@ -19,12 +19,29 @@ static char* video_mem = (char *)VIDEO;
 
 static void scroll(void);
 
-/* void cursor(void);
+
+/* int getScreenX(void);
+ * Inputs: void
+ * Return Value: screen_x
+ * Function: need to get screen_x*/
+int getScreenX(void){
+    return screen_x;
+}
+
+/* int getScreenY(void);
+ * Inputs: void
+ * Return Value: screen_y
+ * Function: need to get screen_y*/
+int getScreenY(void){
+    return screen_y;
+}
+
+/* void set_cursor(void);
  * Inputs: void
  * Return Value: none
  * Function: puts cursor in right spot */
-void cursor(void) {
-    uint16_t pos = screen_y * NUM_COLS + screen_x;
+void set_cursor(int x, int y) {
+    uint16_t pos = y * NUM_COLS + x;
     outb(0x0F, 0x3D4);
     outb((uint8_t)(pos & 0xFF), 0x3D5);
     outb(0x0E, 0x3D4);
@@ -49,7 +66,7 @@ void clear(void) {
 
     screen_x = 0;
     screen_y = 0;
-    cursor();
+    set_cursor(screen_x, screen_y);
 }
 
 /* Standard printf().
@@ -232,7 +249,7 @@ void putc(uint8_t c) {
 
         screen_x++;
     }
-    cursor();
+    set_cursor(screen_x, screen_y);
 }
 
 /* void scroll(void);

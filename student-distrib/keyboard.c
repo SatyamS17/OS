@@ -28,6 +28,13 @@
 #define CTRL_PRESS 0x1D
 #define CTRL_RELEASE 0x9D
 
+#define ALT_PRESS 0x38
+#define ALT_RELEASE 0xB8
+
+#define F1_PRESS 0x3B
+#define F2_PRESS 0x3C
+#define F3_PRESS 0x3D
+
 /* How many spaces in a tab. */
 #define TAB_NUM_SPACES 4
 
@@ -70,7 +77,7 @@ char data_to_char[DATA_TO_CHAR_SIZE][2] = {
 };
 
 /* Flags for caps lshift rshift ctrl. */
-static int capsbool, shiftbool, ctrlbool;
+static int capsbool, shiftbool, ctrlbool, altbool;
 
 /* Pointer to buffer for characters entered. */
 static keyboard_buffer_t* kb_buffer;
@@ -84,11 +91,6 @@ static int chars = 0;
  */
 void keyboard_set_buffer(keyboard_buffer_t* kb) {
     kb_buffer = kb;
-    if (kb_buffer != NULL) {
-        memset(kb_buffer->buf, 0, BUFFER_SIZE);
-        kb_buffer->idx = 0;
-        kb_buffer->data_available = 0;
-    }
 }
 
 /* void keyboard_init(void)
@@ -135,8 +137,32 @@ void keyboard_handler_base(void) {
             ctrlbool = 0;
             send_eoi(KEYBOARD_IRQ);
             return;
+        case ALT_PRESS:
+            altbool = 1;
+            send_eoi(KEYBOARD_IRQ);
+            return;
+        case ALT_RELEASE:
+            altbool = 0;
+            send_eoi(KEYBOARD_IRQ);
+            return;
     }
     
+    if(altbool && data == F1_PRESS){
+        terminal_switch(0);
+        send_eoi(KEYBOARD_IRQ);
+        return;
+    }
+    if(altbool && data == F2_PRESS){
+        terminal_switch(1);
+        send_eoi(KEYBOARD_IRQ);
+        return;
+    }
+    if(altbool && data == F3_PRESS){
+        terminal_switch(2);
+        send_eoi(KEYBOARD_IRQ);
+        return;
+    }
+
     if (ctrlbool && data == 0x26){
         clear();
     } else {
