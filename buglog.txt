@@ -131,3 +131,17 @@ Fix: If statment in read_data would make it break out of the loop so the read_co
 Bug: syserr test #5 didn't work (didn't print anything).
 
 Fix: Closing the stdin file descriptor accidentally marked the fd as available, stopping anything from printing.
+
+Checkpoint 5:
+
+1)
+
+Bug: Cursors were not updated correctly while switching terminals
+
+Fix: Needed to create a setter and getter function for saving the current cursor and restoring the correct position.
+
+2)
+
+Bug: If shell was running in terminal 1, typing characters and pressing enter in terminal 2 would write to terminal 1's buffer.
+
+Fix: Fixed `terminal_read` to read from the terminal it was initially called from, not the current terminal.

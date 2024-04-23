@@ -14,6 +14,7 @@
 #include "tests.h"
 #include "paging.h"
 #include "file_system.h"
+#include "syscall.h"
 
 #define RUN_TESTS   
 
@@ -24,6 +25,7 @@
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
 void entry(unsigned long magic, unsigned long addr) {
+    terminal_init();
 
     multiboot_info_t *mbi;
 
@@ -150,7 +152,6 @@ void entry(unsigned long magic, unsigned long addr) {
 
     keyboard_init();
     rtc_init();
-    terminal_init();
 
     /* Init file_system */
     file_system_init((uint32_t *)((module_t*)mbi->mods_addr)->mod_start);
@@ -175,21 +176,13 @@ void entry(unsigned long magic, unsigned long addr) {
 #endif
     /* Execute the first program ("shell") ... */
     clear();
+    execute((uint8_t*)"shell");
+    terminal_switch(1);
+    execute((uint8_t*)"shell");
+    terminal_switch(2);
+    execute((uint8_t*)"shell");
+    terminal_switch(0);
 
-    // Execute shell by
-    // 1. Setting eax to 2 (execute is syscall #2)
-    // 2. Setting ebx to point to "shell"
-    // 3. Call interrupt 0x80
-    const uint8_t cmd[FILENAME_SIZE] = "shell";
-    asm volatile("       \n\
-        movl  $2, %%eax  \n\
-        movl  %0, %%ebx  \n\
-        int   $0x80      \n\
-        "
-        :
-        : "r"(cmd)
-        : "eax", "ebx"
-    );
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");

@@ -2,6 +2,9 @@
 
 #include "i8259.h"
 #include "lib.h"
+#include "paging.h"
+#include "syscall.h"
+#include "terminal.h"
 
 /* https://wiki.osdev.org/%228042%22_PS/2_Controller#Interrupts */
 #define DATA_PORT 0x60
@@ -163,7 +166,18 @@ void keyboard_handler_base(void) {
         return;
     }
 
-    if (ctrlbool && data == 0x26){
+    uint32_t prev_base_address = page_table[VID_MEM_INDEX].base_address;
+    keyboard_buffer_t* prev_kb_buffer = kb_buffer;
+    int* prev_screen_x = get_screen_x();
+    int* prev_screen_y = get_screen_y();
+
+    page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
+    flush_tlb();
+
+    keyboard_set_buffer(&terminal_get_curr_state()->kb_buffer);
+    set_screen_xy(&terminal_get_curr_state()->cursor_x, &terminal_get_curr_state()->cursor_y);
+
+    if (ctrlbool && data == 0x26) {
         clear();
     } else {
         if (kb_buffer == NULL) {
@@ -209,6 +223,12 @@ void keyboard_handler_base(void) {
             }
         }
     }
+
+    page_table[VID_MEM_INDEX].base_address = prev_base_address;
+    flush_tlb();
+
+    keyboard_set_buffer(prev_kb_buffer);
+    set_screen_xy(prev_screen_x, prev_screen_y);
 
     send_eoi(KEYBOARD_IRQ);
 }

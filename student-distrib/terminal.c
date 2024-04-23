@@ -3,11 +3,26 @@
 #include "keyboard.h"
 #include "lib.h"
 #include "paging.h"
+#include "syscall.h"
+#include "x86_desc.h"
 
 #define NUM_TERMINALS 3
 
 static terminal_state_t terminals[NUM_TERMINALS];
-static int32_t terminal_idx;
+static uint8_t terminal_idx;
+
+terminal_state_t* terminal_get_curr_state(void) {
+    return &terminals[terminal_idx];
+}
+
+/* void terminal_get_curr_idx(void)
+ * Inputs: None
+ * Return Value: int8_t
+ * Function: returns terminal_idx
+ */
+uint8_t terminal_get_curr_idx(void) {
+    return terminal_idx;
+}
 
 /* void terminal_init(void)
  * Inputs: None
@@ -20,30 +35,50 @@ void terminal_init(void) {
         memset(terminals[i].kb_buffer.buf, 0, BUFFER_SIZE);
         terminals[i].kb_buffer.idx = 0;
         terminals[i].kb_buffer.data_available = 0;
+        terminals[i].kb_buffer.asdf = i;
         terminals[i].cursor_x = 0;
         terminals[i].cursor_y = 0;
     }
 
+    set_screen_xy(&terminals[0].cursor_x, &terminals[0].cursor_y);
     keyboard_set_buffer(&terminals[0].kb_buffer);
 }
 
-void terminal_switch(int32_t idx) {
-    if (idx < 0 || idx >= NUM_TERMINALS || idx == terminal_idx) {
+void terminal_switch(uint8_t idx) {
+    if (idx >= NUM_TERMINALS) {
         return;
     }
 
-    keyboard_set_buffer(&terminals[idx].kb_buffer);
+    cli();
 
-    //save curr terminal screen to assigned video page
+    uint32_t prev_base_address = page_table[VID_MEM_INDEX].base_address;
+    page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
+    flush_tlb();
+
     memcpy((void*) (VID_MEM + ((terminal_idx + 1) * FOURKB_BITS)), (void*) VID_MEM, FOURKB_BITS);
-    terminals[terminal_idx].cursor_x = getScreenX();
-    terminals[terminal_idx].cursor_y = getScreenY();
-    
-    //restore next terminal screen to video memory
     memcpy((void*) VID_MEM, (void*) (VID_MEM + ((idx + 1) * FOURKB_BITS)), FOURKB_BITS);
+
+    page_table[VID_MEM_INDEX].base_address = prev_base_address;
+    flush_tlb();
+    
+    keyboard_set_buffer(&terminals[idx].kb_buffer);
     set_cursor(terminals[idx].cursor_x, terminals[idx].cursor_y);
 
+    // Current process's terminal was on the screen but we're switching away
+    if (curr_pcb->terminal_idx == terminal_idx) {
+        page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (terminal_idx + 1);
+        flush_tlb();
+    }
+
+    // Current process's terminal was not on the screen but we're switching onto it
+    if (curr_pcb->terminal_idx == idx) {
+        page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
+        flush_tlb();
+    }
+
     terminal_idx = idx;
+
+    sti();
 }
 
 /* int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes)
@@ -55,7 +90,8 @@ void terminal_switch(int32_t idx) {
  */
 int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
     // Wait until enter key pressed.
-    while (!terminals[terminal_idx].kb_buffer.data_available) { }
+    uint8_t idx = terminal_idx;
+    while (!terminals[idx].kb_buffer.data_available) { }
 
     unsigned long flags;
     cli_and_save(flags);
@@ -64,17 +100,17 @@ int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
 
     int bytes_read;
     for (bytes_read = 0; bytes_read < nbytes && bytes_read < BUFFER_SIZE; bytes_read++) {
-        if (terminals[terminal_idx].kb_buffer.buf[bytes_read] == '\n') {
+        if (terminals[idx].kb_buffer.buf[bytes_read] == '\n') {
             break;
         }
-        buf_char[bytes_read] = terminals[terminal_idx].kb_buffer.buf[bytes_read];
+        buf_char[bytes_read] = terminals[idx].kb_buffer.buf[bytes_read];
     }
 
     buf_char[bytes_read++] = '\n';
 
-    memset(terminals[terminal_idx].kb_buffer.buf, 0, BUFFER_SIZE);
-    terminals[terminal_idx].kb_buffer.idx = 0;
-    terminals[terminal_idx].kb_buffer.data_available = 0;
+    memset(terminals[idx].kb_buffer.buf, 0, BUFFER_SIZE);
+    terminals[idx].kb_buffer.idx = 0;
+    terminals[idx].kb_buffer.data_available = 0;
 
     restore_flags(flags);
     return bytes_read;

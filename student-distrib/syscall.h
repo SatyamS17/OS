@@ -14,7 +14,7 @@
 #define SYSCALL_HANDLER_VEC 0x80
 
 /* Max number of processes */
-#define MAXPIDS 3
+#define MAXPIDS 6
 
 /* ELF magic constants */ 
 #define ELF_MN_1 0x7f
@@ -53,6 +53,8 @@ typedef struct pcb {
 
     // Boolean flag for if an exception has occured in this process or not.
     int32_t exception_occured;
+
+    uint8_t terminal_idx;
 } pcb_t;
 
 /* Pointer to current PCB. */

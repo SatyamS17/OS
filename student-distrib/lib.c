@@ -13,27 +13,27 @@
 /* Access the character attribute at a given (x, y) on the screen. */
 #define VIDEO_ATTR(x, y) (*(uint8_t *)(video_mem + ((NUM_COLS * (y) + (x)) << 1) + 1))
 
-static int screen_x;
-static int screen_y;
+static int* screen_x;
+static int* screen_y;
 static char* video_mem = (char *)VIDEO;
 
 static void scroll(void);
 
-
-/* int getScreenX(void);
- * Inputs: void
- * Return Value: screen_x
- * Function: need to get screen_x*/
-int getScreenX(void){
+int* get_screen_x(void) {
     return screen_x;
 }
 
-/* int getScreenY(void);
- * Inputs: void
- * Return Value: screen_y
- * Function: need to get screen_y*/
-int getScreenY(void){
+int* get_screen_y(void) {
     return screen_y;
+}
+
+/* void set_screen_xy(void);
+ * Inputs: void
+ * Return Value: none
+ * Function: need to set screen_x and screen_y*/
+void set_screen_xy(int* x, int* y) {
+    screen_x = x;
+    screen_y = y;
 }
 
 /* void set_cursor(void);
@@ -64,9 +64,9 @@ void clear(void) {
         *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
     }
 
-    screen_x = 0;
-    screen_y = 0;
-    set_cursor(screen_x, screen_y);
+    *screen_x = 0;
+    *screen_y = 0;
+    set_cursor(*screen_x, *screen_y);
 }
 
 /* Standard printf().
@@ -216,40 +216,41 @@ void putc(uint8_t c) {
     switch (c) {
     case '\n':  /* fallthrough */
     case '\r':
-        screen_y++;
+        (*screen_y)++;
 
-        if (screen_y == NUM_ROWS) {
+        if (*screen_y == NUM_ROWS) {
             scroll();                                                                 
         }
 
-        screen_x = 0;
+        *screen_x = 0;
         break;
     case 0x08:  /* backspace ASCII code */
-        if (screen_x != 0 || screen_y != 0) {
-            screen_x--;
-            if (screen_x == -1) {
-                screen_x = NUM_COLS - 1;
-                screen_y--;
+        if (*screen_x != 0 || *screen_y != 0) {
+            (*screen_x)--;
+            if (*screen_x == -1) {
+                *screen_x = NUM_COLS - 1;
+                (*screen_y)--;
             }
-            VIDEO_CHAR(screen_x, screen_y) = 0;
-            VIDEO_ATTR(screen_x, screen_y) = ATTRIB;
+            VIDEO_CHAR(*screen_x, *screen_y) = 0;
+            VIDEO_ATTR(*screen_x, *screen_y) = ATTRIB;
         }
         break;
     default:
-        if (screen_x == NUM_COLS) {
-            screen_x = 0;
-            screen_y++;
+        if (*screen_x == NUM_COLS) {
+            *screen_x = 0;
+            (*screen_y)++;
 
-            if (screen_y == NUM_ROWS) {
+            if (*screen_y == NUM_ROWS) {
                 scroll();
             }
         }
-        VIDEO_CHAR(screen_x, screen_y) = c;
-        VIDEO_ATTR(screen_x, screen_y) = ATTRIB;
+        VIDEO_CHAR(*screen_x, *screen_y) = c;
+        VIDEO_ATTR(*screen_x, *screen_y) = ATTRIB;
 
-        screen_x++;
+        (*screen_x)++;
     }
-    set_cursor(screen_x, screen_y);
+
+    set_cursor(*screen_x, *screen_y);
 }
 
 /* void scroll(void);
@@ -266,7 +267,7 @@ void scroll(void) {
             VIDEO_ATTR(x, y) = y < NUM_ROWS - 1 ? VIDEO_ATTR(x, y + 1) : ATTRIB;
         }
     }
-    screen_y--;
+    (*screen_y)--;
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);

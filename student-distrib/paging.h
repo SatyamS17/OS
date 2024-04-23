@@ -54,12 +54,6 @@
 /* Starting address given to us in documentation*/
 #define USER_ADDRESS        0x8000000
 
-/* Starting address given to us in documentation*/
-#define USER_ADDRESS_2      0x8400000
-
-/* Starting address given to us in documentation*/
-#define USER_ADDRESS_3      0x8800000
-
 /* Inits page_dir and page_table and CR0, CR3, CR4 as needed to start paging*/
 extern void paging_init();
 

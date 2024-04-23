@@ -5,6 +5,7 @@
 #include "paging.h"
 #include "rtc.h"
 #include "terminal.h"
+// #include "scheduling.c"
 
 /* Pointer to current PCB. */
 pcb_t* curr_pcb = NULL;
@@ -65,6 +66,8 @@ int32_t halt(uint8_t status) {
     /* Unset current PID in pids and restore curr_pcb */
     pids[curr_pcb->pid] = 0;
     curr_pcb = curr_pcb->parent_pcb;
+
+    // terminal_processes[curr_pcb->terminal_idx] = curr_pcb; // MAKE SURE THAT CLI AND STI ARE INCLUDED ------------------------
 
     /* Switch back to `execute`'s stack by setting ebp to saved_ebp */
     // Return from execute function
@@ -177,11 +180,17 @@ int32_t execute(const uint8_t* command) {
     curr_pcb->parent_pcb = parent_pcb;
     memcpy(curr_pcb->args, args, sizeof(args));
     curr_pcb->exception_occured = 0;
+    curr_pcb->terminal_idx = terminal_get_curr_idx();
+
+    // terminal_processes[curr_pcb->terminal_idx] = curr_pcb; // MAKE SURE THAT CLI AND STI ARE INCLUDED ------------------------
 
     /* Setup Paging */
 
     // make virtual mem map to right physical address
     page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
+
+    //memcpy((VID_MEM + ((terminal_idx + 1) * FOURKB_BITS)), (void*) VID_MEM, FOURKB_BITS);
+
     flush_tlb();
         
     /* Load file into memory */

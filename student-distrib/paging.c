@@ -77,7 +77,7 @@ void paging_init() {
     
     page_table[VID_MEM_INDEX].present = 1;
 
-    // temrminal pages
+    // terminal backup video pages
     page_table[VID_MEM1_INDEX].present = 1;
     page_table[VID_MEM2_INDEX].present = 1;
     page_table[VID_MEM3_INDEX].present = 1;
@@ -95,7 +95,7 @@ void paging_init() {
     page_dir[USER_VID_INDEX].page_size = 0;
     page_dir[USER_VID_INDEX].present = 1;
     page_dir[USER_VID_INDEX].user_supervisor = 1;
-    page_dir[USER_VID_INDEX].page_table_address = ((int)uservid_page_table) >> ADDRESS_SHIFT;;
+    page_dir[USER_VID_INDEX].page_table_address = ((int)uservid_page_table) >> ADDRESS_SHIFT;
 
     uservid_page_table[0].user_supervisor = 1;
     uservid_page_table[0].present = 1;
