@@ -35,7 +35,6 @@ void terminal_init(void) {
         memset(terminals[i].kb_buffer.buf, 0, BUFFER_SIZE);
         terminals[i].kb_buffer.idx = 0;
         terminals[i].kb_buffer.data_available = 0;
-        terminals[i].kb_buffer.asdf = i;
         terminals[i].cursor_x = 0;
         terminals[i].cursor_y = 0;
     }
