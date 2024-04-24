@@ -3,6 +3,8 @@
 
 #include "lib.h"
 
+#include "paging.h"
+
 #define VIDEO       0xB8000
 #define NUM_COLS    80
 #define NUM_ROWS    25
@@ -250,7 +252,11 @@ void putc(uint8_t c) {
         (*screen_x)++;
     }
 
-    set_cursor(*screen_x, *screen_y);
+    // Only update cursor if text is actually on the screen (virtual video page is pointing to
+    // actual physical video memory)
+    if (page_table[VID_MEM_INDEX].base_address == VID_MEM_INDEX) {
+        set_cursor(*screen_x, *screen_y);
+    }
 }
 
 /* void scroll(void);

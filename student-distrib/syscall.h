@@ -18,7 +18,7 @@
 
 /* ELF magic constants */ 
 #define ELF_MN_1 0x7f
-#define ELF_MN_2 0x45 
+#define ELF_MN_2 0x45
 #define ELF_MN_3 0x4c
 #define ELF_MN_4 0x46
 
