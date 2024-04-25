@@ -4,6 +4,7 @@
 #include "types.h"
 #include "file_system.h"
 #include "keyboard.h"
+#include "syscall.h"
 
 #define NUM_TERMINALS 3
 
@@ -11,9 +12,11 @@ typedef struct terminal_state {
     keyboard_buffer_t kb_buffer;
     int cursor_x;
     int cursor_y;
+
+    pcb_t *curr_pcb;
 } terminal_state_t;
 
-extern terminal_state_t* terminal_get_curr_state(void);
+extern terminal_state_t* terminal_get_state(uint8_t idx);
 
 extern uint8_t terminal_get_curr_idx(void);
 

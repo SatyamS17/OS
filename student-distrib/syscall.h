@@ -53,12 +53,12 @@ typedef struct pcb {
 
     // Boolean flag for if an exception has occured in this process or not.
     int32_t exception_occured;
-
-    uint8_t terminal_idx;
 } pcb_t;
 
 /* Pointer to current PCB. */
-extern pcb_t* curr_pcb;
+extern uint32_t pids[MAXPIDS];
+
+extern pcb_t *get_curr_pcb(void);
 
 /* Manually flush TLB cache. */
 extern void flush_tlb(void);

@@ -5,13 +5,14 @@
 #include "paging.h"
 #include "rtc.h"
 #include "terminal.h"
-// #include "scheduling.c"
-
-/* Pointer to current PCB. */
-pcb_t* curr_pcb = NULL;
+#include "scheduling.h"
 
 /* Array of which PIDs are in use or not (1 or 0). */
-static uint32_t pids[MAXPIDS];
+uint32_t pids[MAXPIDS];
+
+pcb_t *get_curr_pcb(void) {
+    return terminal_get_state(current_tp_index)->curr_pcb;
+}
 
 /* int32_t halt(uint8_t status)
  *   DESCRIPTION: Ends process and returns context back to parent process.
@@ -22,52 +23,54 @@ static uint32_t pids[MAXPIDS];
  *   SIDE EFFECTS: Returns to parent process
  */
 int32_t halt(uint8_t status) {
+
+    cli();
+    
     // If status = 256, an exception has occured and 256 should be returned from `execute`,
     // but.. status is a uint8_t so 256 wraps to 0.
     //
     // Instead, we manually store a flag of if an exception has occured.
     uint32_t status_32 = (uint32_t) status;
-    if (curr_pcb->exception_occured) {
+    if (get_curr_pcb()->exception_occured) {
         status_32 = 256;
     }
 
     /* Check if trying to exit base shell */
-    if (curr_pcb->parent_pcb == NULL) {
-        // Clear base shell PID
-        pids[0] = 0;
-        curr_pcb = NULL;
+    if (get_curr_pcb()->parent_pcb == NULL) {
+        // // Clear base shell PID
+        // pids[0] = 0;
+        // curr_pcb = NULL;
 
-        // Call shell again
-        const uint8_t cmd[FILENAME_SIZE] = "shell";
-        execute(cmd);
+        // // Call shell again
+        // execute((uint8_t *) "shell");
     
         return 0;
     }
 
     /* Restore parent paging */
-    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->parent_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
+    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (get_curr_pcb()->parent_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
     flush_tlb();
 
     /* Clear file descriptors */
     int i;
     for (i = 0; i < MAX_OPEN_FILES; i++) {
-        if (curr_pcb->fds[i].flags == FD_USED) {
+        if (get_curr_pcb()->fds[i].flags == FD_USED) {
             close(i);
         }
     }
 
     /* Write parent's process info back to TSS */
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = KERNEL_END - (curr_pcb->parent_pcb->pid * EIGHTKB_BITS);
+    tss.esp0 = KERNEL_END - (get_curr_pcb()->parent_pcb->pid * EIGHTKB_BITS);
     
     /* Jump to execute return */
-    uint32_t saved_ebp = curr_pcb->saved_ebp;
+    uint32_t saved_ebp = get_curr_pcb()->saved_ebp;
 
     /* Unset current PID in pids and restore curr_pcb */
-    pids[curr_pcb->pid] = 0;
-    curr_pcb = curr_pcb->parent_pcb;
+    pids[get_curr_pcb()->pid] = 0;
+    terminal_get_state(current_tp_index)->curr_pcb = get_curr_pcb()->parent_pcb;
 
-    // terminal_processes[curr_pcb->terminal_idx] = curr_pcb; // MAKE SURE THAT CLI AND STI ARE INCLUDED ------------------------
+    sti();
 
     /* Switch back to `execute`'s stack by setting ebp to saved_ebp */
     // Return from execute function
@@ -94,7 +97,8 @@ int32_t halt(uint8_t status) {
  *   RETURN VALUE: status of the execute
  *   SIDE EFFECTS: Starts a process if its able to
  */
-int32_t execute(const uint8_t* command) {
+int32_t execute(const uint8_t* command) {   
+    cli();
     int i;
 
     /* Parse args */
@@ -151,13 +155,6 @@ int32_t execute(const uint8_t* command) {
     }
 
     /* Find PID */
-    int32_t old_pid;
-    if (curr_pcb == NULL) {
-        old_pid = -1;
-    } else {
-        old_pid = curr_pcb->pid;
-    }
-    
     int pid = -1;
     for (i = 0; i < MAXPIDS; i++){
         // select a valid PID
@@ -174,22 +171,40 @@ int32_t execute(const uint8_t* command) {
     }
 
     //update parent and current pcb
-    pcb_t* parent_pcb = curr_pcb;
-    curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
-    curr_pcb->pid = pid;
-    curr_pcb->parent_pcb = parent_pcb;
-    memcpy(curr_pcb->args, args, sizeof(args));
-    curr_pcb->exception_occured = 0;
-    curr_pcb->terminal_idx = terminal_get_curr_idx();
+    terminal_state_t *current_terminal_state = terminal_get_state(current_tp_index);
 
-    // terminal_processes[curr_pcb->terminal_idx] = curr_pcb; // MAKE SURE THAT CLI AND STI ARE INCLUDED ------------------------
+    pcb_t* curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
+    pcb_t* parent_pcb = current_terminal_state->curr_pcb;
+    current_terminal_state->curr_pcb = curr_pcb;
+
+    get_curr_pcb()->pid = pid;
+    get_curr_pcb()->parent_pcb = parent_pcb;
+    memcpy(get_curr_pcb()->args, args, sizeof(args));
+    get_curr_pcb()->exception_occured = 0;
+
+    // Clear all FDs
+    for (i = 0; i < MAX_OPEN_FILES; i++) {
+        get_curr_pcb()->fds[i].functions.open = NULL;
+        get_curr_pcb()->fds[i].functions.close = NULL;
+        get_curr_pcb()->fds[i].functions.read = NULL;
+        get_curr_pcb()->fds[i].functions.write = NULL;
+        get_curr_pcb()->fds[i].inode = 0;
+        get_curr_pcb()->fds[i].pos = 0;
+        get_curr_pcb()->fds[i].flags = FD_AVAIL;
+    }
+
+    // Set FD 0 to stdin
+    get_curr_pcb()->fds[0].functions = make_stdin_fops();
+    get_curr_pcb()->fds[0].flags = FD_USED;
+
+    // Set FD 1 to stdin
+    get_curr_pcb()->fds[1].functions = make_stdout_fops();
+    get_curr_pcb()->fds[1].flags = FD_USED;
 
     /* Setup Paging */
 
     // make virtual mem map to right physical address
-    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
-
-    //memcpy((VID_MEM + ((terminal_idx + 1) * FOURKB_BITS)), (void*) VID_MEM, FOURKB_BITS);
+    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (get_curr_pcb()->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
 
     flush_tlb();
         
@@ -202,36 +217,15 @@ int32_t execute(const uint8_t* command) {
 
     uint32_t eip = *((uint32_t*) (program_location + EIP_OFFSET));
 
-    /* Create pcb and clear fds */
-
-    // Clear all FDs
-    for (i = 0; i < MAX_OPEN_FILES; i++) {
-        curr_pcb->fds[i].functions.open = NULL;
-        curr_pcb->fds[i].functions.close = NULL;
-        curr_pcb->fds[i].functions.read = NULL;
-        curr_pcb->fds[i].functions.write = NULL;
-        curr_pcb->fds[i].inode = 0;
-        curr_pcb->fds[i].pos = 0;
-        curr_pcb->fds[i].flags = FD_AVAIL;
-    }
-
-    // Set FD 0 to stdin
-    curr_pcb->fds[0].functions = make_stdin_fops();
-    curr_pcb->fds[0].flags = FD_USED;
-
-    // Set FD 1 to stdin
-    curr_pcb->fds[1].functions = make_stdout_fops();
-    curr_pcb->fds[1].flags = FD_USED;
-
     /* Prepare For Context Switch */
     // save current ebp
     register uint32_t saved_ebp asm("ebp");
-    curr_pcb->saved_ebp = saved_ebp;
+    get_curr_pcb()->saved_ebp = saved_ebp;
 
     // modify esp0 and ss0 in TSS
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = KERNEL_END - (curr_pcb->pid * EIGHTKB_BITS);
-
+    tss.esp0 = KERNEL_END - (get_curr_pcb()->pid * EIGHTKB_BITS);
+    sti();
     // push IRET context on the the correct order and call iret
     asm volatile("    \n\
         pushl %0      \n\
@@ -247,6 +241,7 @@ int32_t execute(const uint8_t* command) {
     );
 
     return 0;
+    
 }
 
 
@@ -261,16 +256,16 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
     // check for invalid arguments
     if(fd < 0 || fd >= MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
-       || curr_pcb->fds[fd].flags == FD_AVAIL) {
+       || get_curr_pcb()->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
 
     // read if possible
-    if (curr_pcb->fds[fd].functions.read == NULL) {
+    if (get_curr_pcb()->fds[fd].functions.read == NULL) {
         return -1;
     }
     //return the number of bytes read
-    uint32_t val = curr_pcb->fds[fd].functions.read(fd, buf, nbytes);
+    uint32_t val = get_curr_pcb()->fds[fd].functions.read(fd, buf, nbytes);
     return val;
 }
 
@@ -286,16 +281,16 @@ int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
     // check for invalid arguments
     if (fd < 0 || fd >= MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
-       || curr_pcb->fds[fd].flags == FD_AVAIL) {
+       || get_curr_pcb()->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
 
     // check if the function is null}
-    if (curr_pcb->fds[fd].functions.write == NULL) {
+    if (get_curr_pcb()->fds[fd].functions.write == NULL) {
         return -1;
     }
     // return the number of bytes read
-    return curr_pcb->fds[fd].functions.write(fd,buf,nbytes);
+    return get_curr_pcb()->fds[fd].functions.write(fd,buf,nbytes);
 }
 
 /* int32_t open(const uint8_t* filename)
@@ -304,7 +299,6 @@ int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
 * Function: opens a file
 */
 int32_t open(const uint8_t* filename) {
-
     //check if the file is valid
     dentry_t dentry;
     if (read_dentry_by_name(filename, &dentry) != 0) {
@@ -314,7 +308,7 @@ int32_t open(const uint8_t* filename) {
     // Find open file descriptor index
     int fd_idx;
     for (fd_idx = 0; fd_idx < MAX_OPEN_FILES; fd_idx++) {
-        if (curr_pcb->fds[fd_idx].flags == FD_AVAIL) {
+        if (get_curr_pcb()->fds[fd_idx].flags == FD_AVAIL) {
             break;
         }
     }
@@ -325,28 +319,28 @@ int32_t open(const uint8_t* filename) {
     }
 
     //copy file data
-    curr_pcb->fds[fd_idx].inode = dentry.inode;
-    curr_pcb->fds[fd_idx].pos = 0;
-    curr_pcb->fds[fd_idx].flags = FD_USED;
+    get_curr_pcb()->fds[fd_idx].inode = dentry.inode;
+    get_curr_pcb()->fds[fd_idx].pos = 0;
+    get_curr_pcb()->fds[fd_idx].flags = FD_USED;
 
     // switch to the right function call given the type
     switch (dentry.file_type) {
     case 0:  // RTC
-        curr_pcb->fds[fd_idx].functions = make_rtc_fops();
+        get_curr_pcb()->fds[fd_idx].functions = make_rtc_fops();
         break;
     case 1:  // directory
-        curr_pcb->fds[fd_idx].functions = make_dir_fops();
+        get_curr_pcb()->fds[fd_idx].functions = make_dir_fops();
         break;
     case 2:  // regular file
-        curr_pcb->fds[fd_idx].functions = make_file_fops();
+        get_curr_pcb()->fds[fd_idx].functions = make_file_fops();
         break;
     default:
         return -1;
     }
 
     // if valid then open the file
-    if (curr_pcb->fds[fd_idx].functions.open != NULL) {
-        curr_pcb->fds[fd_idx].functions.open(filename);
+    if (get_curr_pcb()->fds[fd_idx].functions.open != NULL) {
+        get_curr_pcb()->fds[fd_idx].functions.open(filename);
     }
 
     return fd_idx;
@@ -359,25 +353,25 @@ int32_t open(const uint8_t* filename) {
 */
 int32_t close(int32_t fd) {
     // check for valid arguments
-    if(fd < 0 || fd >= MAX_OPEN_FILES || curr_pcb->fds[fd].flags == FD_AVAIL) {
+    if(fd < 0 || fd >= MAX_OPEN_FILES || get_curr_pcb()->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
 
-    if (curr_pcb->fds[fd].functions.close == NULL) {
+    if (get_curr_pcb()->fds[fd].functions.close == NULL) {
         return 0;
     }
 
     //close the file
-    int32_t ret = curr_pcb->fds[fd].functions.close(fd);
+    int32_t ret = get_curr_pcb()->fds[fd].functions.close(fd);
     
     if (ret != -1) {
-        curr_pcb->fds[fd].functions.open = NULL;
-        curr_pcb->fds[fd].functions.close = NULL;
-        curr_pcb->fds[fd].functions.read = NULL;
-        curr_pcb->fds[fd].functions.write = NULL;
-        curr_pcb->fds[fd].inode = 0;
-        curr_pcb->fds[fd].pos = 0;
-        curr_pcb->fds[fd].flags = FD_AVAIL;
+        get_curr_pcb()->fds[fd].functions.open = NULL;
+        get_curr_pcb()->fds[fd].functions.close = NULL;
+        get_curr_pcb()->fds[fd].functions.read = NULL;
+        get_curr_pcb()->fds[fd].functions.write = NULL;
+        get_curr_pcb()->fds[fd].inode = 0;
+        get_curr_pcb()->fds[fd].pos = 0;
+        get_curr_pcb()->fds[fd].flags = FD_AVAIL;
     }
 
     return ret;
@@ -390,11 +384,11 @@ int32_t close(int32_t fd) {
 * Function: copies shell arguments into given buffer
 */
 int32_t getargs(uint8_t* buf, int32_t nbytes) {
-    if (buf == NULL || curr_pcb->args[0] == '\0') {
+    if (buf == NULL || get_curr_pcb()->args[0] == '\0') {
         return -1;
     }
 
-    strncpy((int8_t*) buf, (const int8_t*) curr_pcb->args, nbytes);
+    strncpy((int8_t*) buf, (const int8_t*) get_curr_pcb()->args, nbytes);
     return 0;
 }
 
@@ -404,7 +398,6 @@ int32_t getargs(uint8_t* buf, int32_t nbytes) {
 * Function: Saves vid mem into the screen start pointer
 */
 int32_t vidmap(uint8_t** screen_start) {
-    
     // check for garbage values?
     if(screen_start == NULL) {return -1;}
 

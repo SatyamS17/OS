@@ -177,16 +177,8 @@ void entry(unsigned long magic, unsigned long addr) {
     launch_tests();
 
 #endif
-    /* Execute the first program ("shell") ... */
     clear();
-    execute((uint8_t*)"shell");
-    //scheduler();
-
-    //this code does not run!!!
-    //printf("TEST??");
-    //scheduler();
-
-    //code after execute does not run hmmm interesting...
+    // execute((uint8_t*)"shell");
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");

@@ -164,8 +164,8 @@ int32_t file_read(int32_t fd, void* buf, int32_t nbytes) {
     if (fd < 2 || fd >= MAX_OPEN_FILES) { return -1; }
 
     // will this cause a problem if len is too long?
-    uint32_t ret = read_data(curr_pcb->fds[fd].inode, curr_pcb->fds[fd].pos, buf, nbytes);
-    curr_pcb->fds[fd].pos += ret;
+    uint32_t ret = read_data(get_curr_pcb()->fds[fd].inode, get_curr_pcb()->fds[fd].pos, buf, nbytes);
+    get_curr_pcb()->fds[fd].pos += ret;
     return ret;
 }
 
@@ -183,11 +183,11 @@ int32_t dir_read(int32_t fd, void* buf, int32_t nbytes) {
     // check for garbage values
     if (buf == NULL) { return -1; }
     if (fd < 2 || fd >= MAX_OPEN_FILES) { return -1; }
-    if (curr_pcb == NULL) { return -1; }
+    if (get_curr_pcb() == NULL) { return -1; }
 
     // keep track of the index being printed since once at a time
-    if (curr_pcb->fds[fd].pos >= file_system->num_dir_entries) { return 0; }
-    dentry_t file = file_system->dir_entries[curr_pcb->fds[fd].pos];
+    if (get_curr_pcb()->fds[fd].pos >= file_system->num_dir_entries) { return 0; }
+    dentry_t file = file_system->dir_entries[get_curr_pcb()->fds[fd].pos];
 
     // find the details about the file and write into buffer
     uint8_t * buffer = (uint8_t *) buf;
@@ -199,7 +199,7 @@ int32_t dir_read(int32_t fd, void* buf, int32_t nbytes) {
     }
 
     // increase pos to look at next file
-    curr_pcb->fds[fd].pos++;
+    get_curr_pcb()->fds[fd].pos++;
 
     return i;
 }

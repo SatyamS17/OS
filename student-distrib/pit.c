@@ -13,8 +13,8 @@
 //https://forum.osdev.org/viewtopic.php?f=1&t=40829
 void pit_init(void){
     outb(PIT_MODE, PIT_CMD); 
-    outb((uint8_t)(PIT_RATE & 0xFF), PIT_DATA);
-    outb((uint8_t)(PIT_RATE >> 8) & 0xFF, PIT_DATA);
+    outb((uint8_t)(PIT_RATE & 0xFF), PIT_DATA); //send lower 8
+    outb((uint8_t)((PIT_RATE >> 8) & 0xFF), PIT_DATA); //send upper 8
 
     enable_irq(PIT_IRQ);
 }  
@@ -25,9 +25,8 @@ void pit_init(void){
  * Inputs: None
  * Outputs: None
  */  
-
-void pit_handler(void){ 
+void pit_handler_base(void){ 
     send_eoi(PIT_IRQ); 
-    //scheduler();
+    scheduler();
 }
 

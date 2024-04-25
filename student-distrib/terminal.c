@@ -5,13 +5,13 @@
 #include "paging.h"
 #include "syscall.h"
 #include "x86_desc.h"
-
+#include "scheduling.h"
 
 static terminal_state_t terminals[NUM_TERMINALS];
 static uint8_t terminal_idx;
 
-terminal_state_t* terminal_get_curr_state(void) {
-    return &terminals[terminal_idx];
+terminal_state_t* terminal_get_state(uint8_t index) {
+    return &terminals[index];
 }
 
 /* void terminal_get_curr_idx(void)
@@ -46,7 +46,7 @@ void terminal_switch(uint8_t idx) {
     if (idx >= NUM_TERMINALS) {
         return;
     }
-
+    
     cli();
 
     uint32_t prev_base_address = page_table[VID_MEM_INDEX].base_address;
@@ -58,18 +58,19 @@ void terminal_switch(uint8_t idx) {
 
     page_table[VID_MEM_INDEX].base_address = prev_base_address;
     flush_tlb();
-    
+
     keyboard_set_buffer(&terminals[idx].kb_buffer);
+    set_screen_xy(&terminals[idx].cursor_x, &terminals[idx].cursor_y);
     set_cursor(terminals[idx].cursor_x, terminals[idx].cursor_y);
 
     // Current process's terminal was on the screen but we're switching away
-    if (curr_pcb->terminal_idx == terminal_idx) {
+    if (current_tp_index == terminal_idx) {
         page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (terminal_idx + 1);
         flush_tlb();
     }
 
     // Current process's terminal was not on the screen but we're switching onto it
-    if (curr_pcb->terminal_idx == idx) {
+    if (current_tp_index == idx) {
         page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
         flush_tlb();
     }

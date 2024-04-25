@@ -7,7 +7,7 @@
 void name(void) {                                  \
     clear();                                       \
     printf(":( encountered an error: " msg "\n");  \
-    curr_pcb->exception_occured = 1;               \
+    get_curr_pcb()->exception_occured = 1;         \
     halt(0);                                       \
 }
 

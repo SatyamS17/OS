@@ -5,6 +5,7 @@
 #include "paging.h"
 #include "syscall.h"
 #include "terminal.h"
+#include "scheduling.h"
 
 /* https://wiki.osdev.org/%228042%22_PS/2_Controller#Interrupts */
 #define DATA_PORT 0x60
@@ -37,6 +38,7 @@
 #define F1_PRESS 0x3B
 #define F2_PRESS 0x3C
 #define F3_PRESS 0x3D
+#define F4_PRESS 0x3E
 
 /* How many spaces in a tab. */
 #define TAB_NUM_SPACES 4
@@ -165,6 +167,11 @@ void keyboard_handler_base(void) {
         send_eoi(KEYBOARD_IRQ);
         return;
     }
+    if(data == F4_PRESS) {
+        send_eoi(KEYBOARD_IRQ);
+        scheduler();
+        return;
+    }
 
     uint32_t prev_base_address = page_table[VID_MEM_INDEX].base_address;
     keyboard_buffer_t* prev_kb_buffer = kb_buffer;
@@ -174,8 +181,9 @@ void keyboard_handler_base(void) {
     page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
     flush_tlb();
 
-    keyboard_set_buffer(&terminal_get_curr_state()->kb_buffer);
-    set_screen_xy(&terminal_get_curr_state()->cursor_x, &terminal_get_curr_state()->cursor_y);
+    terminal_state_t *current_terminal_state = terminal_get_state(terminal_get_curr_idx());
+    keyboard_set_buffer(&current_terminal_state->kb_buffer);
+    set_screen_xy(&current_terminal_state->cursor_x, &current_terminal_state->cursor_y);
 
     if (ctrlbool && data == 0x26) {
         clear();
