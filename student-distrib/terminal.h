@@ -5,6 +5,8 @@
 #include "file_system.h"
 #include "keyboard.h"
 
+#define NUM_TERMINALS 3
+
 typedef struct terminal_state {
     keyboard_buffer_t kb_buffer;
     int cursor_x;

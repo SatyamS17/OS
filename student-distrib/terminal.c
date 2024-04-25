@@ -6,7 +6,6 @@
 #include "syscall.h"
 #include "x86_desc.h"
 
-#define NUM_TERMINALS 3
 
 static terminal_state_t terminals[NUM_TERMINALS];
 static uint8_t terminal_idx;

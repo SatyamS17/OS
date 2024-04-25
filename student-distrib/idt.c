@@ -3,6 +3,7 @@
 #include "exceptions.h"
 #include "keyboard.h"
 #include "rtc.h"
+#include "pit.h"
 #include "syscall.h"
 #include "x86_desc.h"
 
@@ -71,4 +72,9 @@ void init_idt() {
     idt[RTC_HANDLER_VEC].present = 1;         /* mark entry present       */
     idt[RTC_HANDLER_VEC].reserved3 = 0;       /* change to interrupt gate */
     SET_IDT_ENTRY(idt[RTC_HANDLER_VEC], rtc_handler);
+
+    /* Enable interrupt vector for PIT interrupts. */
+    idt[PIT_HANDLER_VEC].present = 1;         /* mark entry present       */
+    idt[PIT_HANDLER_VEC].reserved3 = 0;       /* change to interrupt gate */
+    SET_IDT_ENTRY(idt[PIT_HANDLER_VEC], pit_handler);
 }

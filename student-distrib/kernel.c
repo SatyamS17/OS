@@ -15,6 +15,8 @@
 #include "paging.h"
 #include "file_system.h"
 #include "syscall.h"
+#include "scheduling.h"
+#include "pit.h"
 
 #define RUN_TESTS   
 
@@ -153,6 +155,8 @@ void entry(unsigned long magic, unsigned long addr) {
     keyboard_init();
     rtc_init();
 
+    pit_init();
+
     /* Init file_system */
     file_system_init((uint32_t *)((module_t*)mbi->mods_addr)->mod_start);
 
@@ -160,7 +164,6 @@ void entry(unsigned long magic, unsigned long addr) {
     paging_init();
 
     clear();
-
 
     /* Enable interrupts */
     /* Do not enable the following until after you have set up your
@@ -177,12 +180,13 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Execute the first program ("shell") ... */
     clear();
     execute((uint8_t*)"shell");
-    terminal_switch(1);
-    execute((uint8_t*)"shell");
-    terminal_switch(2);
-    execute((uint8_t*)"shell");
-    terminal_switch(0);
+    //scheduler();
 
+    //this code does not run!!!
+    //printf("TEST??");
+    //scheduler();
+
+    //code after execute does not run hmmm interesting...
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");

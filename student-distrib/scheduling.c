@@ -1,21 +1,30 @@
-#ifndef _SCHEDULING_H
-#define _SCHEDULING_H 
-
+#include "scheduling.h"
 #include "terminal.h"
 #include "paging.h"
-#include "syscall.c"
-
-extern pcb_t * terminal_processes[NUM_TERMINALS];
-
-void scheduler();
-
-#endif
 
 pcb_t * terminal_processes[NUM_TERMINALS];
 
 int current_tp_index = 0;
 
 void scheduler() {
+
+    // init terminal if needed
+    if(terminal_processes[current_tp_index] == NULL) {
+        // switch the vid memeory being written 
+        page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (current_tp_index + 1);
+
+        flush_tlb();
+
+        execute((uint8_t*)"shell");
+        // code after execute doesnt not run
+        terminal_processes[current_tp_index] = curr_pcb;
+        curr_pcb->terminal_idx = current_tp_index;
+
+        current_tp_index = (current_tp_index + 1) % 3;
+
+        return;
+    }
+
     // save current ebp
     register uint32_t saved_ebp asm("ebp");    
     curr_pcb->saved_ebp = saved_ebp;
@@ -26,6 +35,7 @@ void scheduler() {
     
     //look at next process in "queue"
     current_tp_index = (current_tp_index + 1) % 3;
+
     curr_pcb = terminal_processes[current_tp_index];
 
     // switch the vid memeory being written 
