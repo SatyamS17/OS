@@ -5,56 +5,58 @@
 #include "lib.h"
 #include "syscall.h"
 
-int current_tp_index = 0;
+uint8_t scheduler_terminal_idx = 0;
 
 void scheduler() {
-    // init terminal if needed
-    
-    if (get_curr_pcb() == NULL) {
-        terminal_state_t *current_terminal_state = terminal_get_state(current_tp_index);
+    if (get_scheduler_pcb() == NULL) {
+        terminal_state_t *current_terminal_state = terminal_get_state(scheduler_terminal_idx);
         keyboard_set_buffer(&current_terminal_state->kb_buffer);
         set_screen_xy(&current_terminal_state->cursor_x, &current_terminal_state->cursor_y);
 
-        if (current_tp_index == terminal_get_curr_idx()) {
-            page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;    
+        if (scheduler_terminal_idx == screen_terminal_idx) {
+            page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
             set_cursor(current_terminal_state->cursor_x, current_terminal_state->cursor_y);
         } else {
-            page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (current_tp_index + 1);
+            page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (scheduler_terminal_idx + 1);
         }
+
+        flush_tlb();
         
-        execute((uint8_t * )"shell");
+        execute((uint8_t * ) "shell");
     }
 
-    register uint32_t saved_ebp asm("ebp");    
-    get_curr_pcb()->saved_ebp = saved_ebp;
+    register uint32_t ebp asm("ebp");
+    get_scheduler_pcb()->ebp_scheduler = ebp;
 
-    //look at next process in "queue"
-    current_tp_index = (current_tp_index + 1) % 3;
+    // look at next process in "queue"
+    scheduler_terminal_idx = (scheduler_terminal_idx + 1) % NUM_TERMINALS;
 
-    if (get_curr_pcb() == NULL) {
-        return; 
+    if (get_scheduler_pcb() == NULL) {
+        return;
     }
     
-    // update page table
-    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (get_curr_pcb()->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
-
     // switch the vid memory being written
-    terminal_state_t *current_terminal_state = terminal_get_state(current_tp_index);
+    terminal_state_t *current_terminal_state = terminal_get_state(scheduler_terminal_idx);
     keyboard_set_buffer(&current_terminal_state->kb_buffer);
     set_screen_xy(&current_terminal_state->cursor_x, &current_terminal_state->cursor_y);
-    if (current_tp_index == terminal_get_curr_idx()) {
+
+    if (scheduler_terminal_idx == screen_terminal_idx) {
         page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
         set_cursor(current_terminal_state->cursor_x, current_terminal_state->cursor_y);
     } else {
-        page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (current_tp_index + 1);
+        page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (scheduler_terminal_idx + 1);
     }
 
-    
     flush_tlb();
+
+    // update page table
+    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (get_scheduler_pcb()->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
 
     //save esp0 in the TSS
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = KERNEL_END - (get_curr_pcb()->pid * EIGHTKB_BITS);
+    tss.esp0 = KERNEL_END - (get_scheduler_pcb()->pid * EIGHTKB_BITS);
+
+    uint32_t saved_ebp = get_scheduler_pcb()->ebp_scheduler;
 
     // some ASM code to restore ebp
     asm volatile("          \n\
@@ -63,8 +65,7 @@ void scheduler() {
         ret                 \n\
         "
         :
-        : "r"(get_curr_pcb()->saved_ebp)
+        : "r"(saved_ebp)
         : "ebp"
     );
-    
 }

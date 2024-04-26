@@ -8,19 +8,11 @@
 #include "scheduling.h"
 
 static terminal_state_t terminals[NUM_TERMINALS];
-static uint8_t terminal_idx;
+
+uint8_t screen_terminal_idx = 0;
 
 terminal_state_t* terminal_get_state(uint8_t index) {
     return &terminals[index];
-}
-
-/* void terminal_get_curr_idx(void)
- * Inputs: None
- * Return Value: int8_t
- * Function: returns terminal_idx
- */
-uint8_t terminal_get_curr_idx(void) {
-    return terminal_idx;
 }
 
 /* void terminal_init(void)
@@ -43,39 +35,45 @@ void terminal_init(void) {
 }
 
 void terminal_switch(uint8_t idx) {
-    if (idx >= NUM_TERMINALS) {
+    uint8_t old_terminal_idx = screen_terminal_idx;
+    uint8_t new_terminal_idx = idx;
+
+    if (new_terminal_idx >= NUM_TERMINALS) {
         return;
     }
     
     cli();
 
+    // Copy video memmory to old terminal's video memory and copy new terminal's video memory to video memory.
     uint32_t prev_base_address = page_table[VID_MEM_INDEX].base_address;
     page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
     flush_tlb();
 
-    memcpy((void*) (VID_MEM + ((terminal_idx + 1) * FOURKB_BITS)), (void*) VID_MEM, FOURKB_BITS);
-    memcpy((void*) VID_MEM, (void*) (VID_MEM + ((idx + 1) * FOURKB_BITS)), FOURKB_BITS);
+    memcpy((void*) (VID_MEM + ((old_terminal_idx + 1) * FOURKB_BITS)), (void*) VID_MEM, FOURKB_BITS);
+    memcpy((void*) VID_MEM, (void*) (VID_MEM + ((new_terminal_idx + 1) * FOURKB_BITS)), FOURKB_BITS);
 
     page_table[VID_MEM_INDEX].base_address = prev_base_address;
     flush_tlb();
 
-    keyboard_set_buffer(&terminals[idx].kb_buffer);
-    set_screen_xy(&terminals[idx].cursor_x, &terminals[idx].cursor_y);
-    set_cursor(terminals[idx].cursor_x, terminals[idx].cursor_y);
+    // Set keyboard buffer and cursor to new terminal
+    terminal_state_t *new_terminal_state = terminal_get_state(new_terminal_idx);
+    keyboard_set_buffer(&new_terminal_state->kb_buffer);
+    set_screen_xy(&new_terminal_state->cursor_x, &new_terminal_state->cursor_y);
+    set_cursor(new_terminal_state->cursor_x, new_terminal_state->cursor_y);
 
     // Current process's terminal was on the screen but we're switching away
-    if (current_tp_index == terminal_idx) {
-        page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (terminal_idx + 1);
+    if (scheduler_terminal_idx == old_terminal_idx) {
+        page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (old_terminal_idx + 1);
         flush_tlb();
     }
 
     // Current process's terminal was not on the screen but we're switching onto it
-    if (current_tp_index == idx) {
+    if (scheduler_terminal_idx == new_terminal_idx) {
         page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
         flush_tlb();
     }
 
-    terminal_idx = idx;
+    screen_terminal_idx = idx;
 
     sti();
 }
@@ -89,7 +87,7 @@ void terminal_switch(uint8_t idx) {
  */
 int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
     // Wait until enter key pressed.
-    uint8_t idx = terminal_idx;
+    uint8_t idx = scheduler_terminal_idx;
     while (!terminals[idx].kb_buffer.data_available) { }
 
     unsigned long flags;

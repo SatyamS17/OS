@@ -181,7 +181,7 @@ void keyboard_handler_base(void) {
     page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
     flush_tlb();
 
-    terminal_state_t *current_terminal_state = terminal_get_state(terminal_get_curr_idx());
+    terminal_state_t *current_terminal_state = terminal_get_state(screen_terminal_idx);
     keyboard_set_buffer(&current_terminal_state->kb_buffer);
     set_screen_xy(&current_terminal_state->cursor_x, &current_terminal_state->cursor_y);
 

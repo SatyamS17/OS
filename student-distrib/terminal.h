@@ -16,9 +16,9 @@ typedef struct terminal_state {
     pcb_t *curr_pcb;
 } terminal_state_t;
 
-extern terminal_state_t* terminal_get_state(uint8_t idx);
+extern uint8_t screen_terminal_idx;
 
-extern uint8_t terminal_get_curr_idx(void);
+extern terminal_state_t* terminal_get_state(uint8_t idx);
 
 extern void terminal_init(void);
 

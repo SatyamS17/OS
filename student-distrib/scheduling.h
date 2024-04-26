@@ -7,7 +7,7 @@
 
 extern pcb_t *terminal_processes[NUM_TERMINALS];
 
-extern int current_tp_index;
+extern uint8_t scheduler_terminal_idx;
 
 void scheduler();
 

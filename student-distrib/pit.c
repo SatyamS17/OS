@@ -25,8 +25,8 @@ void pit_init(void){
  * Inputs: None
  * Outputs: None
  */  
-void pit_handler_base(void){ 
-    send_eoi(PIT_IRQ); 
+void pit_handler_base(void) {
+    send_eoi(PIT_IRQ);
     scheduler();
 }
 

@@ -46,7 +46,8 @@ typedef struct pcb {
     struct pcb* parent_pcb;  // used for context switching 
 
     // information about current process
-    uint32_t saved_ebp;
+    uint32_t ebp_execute;
+    uint32_t ebp_scheduler;
 
     // Argument passed into shell
     uint8_t args[BUFFER_SIZE];
@@ -58,7 +59,7 @@ typedef struct pcb {
 /* Pointer to current PCB. */
 extern uint32_t pids[MAXPIDS];
 
-extern pcb_t *get_curr_pcb(void);
+extern pcb_t *get_scheduler_pcb(void);
 
 /* Manually flush TLB cache. */
 extern void flush_tlb(void);
