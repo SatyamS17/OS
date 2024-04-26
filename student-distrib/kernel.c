@@ -158,7 +158,7 @@ void entry(unsigned long magic, unsigned long addr) {
     pit_init();
 
     /* Init file_system */
-    file_system_init((uint32_t *)((module_t*)mbi->mods_addr)->mod_start);
+    file_system = (boot_block_t *)(((module_t*)mbi->mods_addr)->mod_start);
 
     /* Init paging */
     paging_init();

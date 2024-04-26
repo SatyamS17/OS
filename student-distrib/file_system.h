@@ -62,7 +62,6 @@ typedef struct fd {
 
 /* Intialize file system*/
 extern boot_block_t* file_system;
-extern void file_system_init(uint32_t * address);
 
 /* dentry functions */
 extern uint32_t read_dentry_by_name(const uint8_t* fname, dentry_t * dentry);

@@ -37,12 +37,13 @@ int32_t halt(uint8_t status) {
     /* Check if trying to exit base shell */
     if (get_scheduler_pcb()->parent_pcb == NULL) {
         // // Clear base shell PID
-        // pids[get_scheduler_pcb()->cur_pcb->pid] = 0;
+        // pids[get_scheduler_pcb()->pid] = 0;
         // curr_pcb = NULL;
-
+        
+        // sti();
         // // Call shell again
         // execute((uint8_t *) "shell");
-        sti();
+        
         return 0;
     }
 
@@ -418,6 +419,8 @@ int32_t vidmap(uint8_t** screen_start) {
     // make sure it falls under the user space
     if((uint32_t)screen_start < USER_ADDRESS || 
     (uint32_t)screen_start > (USER_ADDRESS + FOURMB_BITS)) {return -1;}
+
+    clear();
     
     // update value in screen start to point to video mem
     *screen_start = (uint8_t*)VIRTUAL_VID_MEM;

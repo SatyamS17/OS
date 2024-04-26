@@ -47,12 +47,14 @@ void terminal_switch(uint8_t idx) {
     // Copy video memmory to old terminal's video memory and copy new terminal's video memory to video memory.
     uint32_t prev_base_address = page_table[VID_MEM_INDEX].base_address;
     page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
+    uservid_page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
     flush_tlb();
 
     memcpy((void*) (VID_MEM + ((old_terminal_idx + 1) * FOURKB_BITS)), (void*) VID_MEM, FOURKB_BITS);
     memcpy((void*) VID_MEM, (void*) (VID_MEM + ((new_terminal_idx + 1) * FOURKB_BITS)), FOURKB_BITS);
 
     page_table[VID_MEM_INDEX].base_address = prev_base_address;
+    uservid_page_table[VID_MEM_INDEX].base_address = prev_base_address;
     flush_tlb();
 
     // Set keyboard buffer and cursor to new terminal
@@ -64,12 +66,15 @@ void terminal_switch(uint8_t idx) {
     // Current process's terminal was on the screen but we're switching away
     if (scheduler_terminal_idx == old_terminal_idx) {
         page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (old_terminal_idx + 1);
+        uservid_page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (old_terminal_idx + 1);
         flush_tlb();
     }
 
     // Current process's terminal was not on the screen but we're switching onto it
     if (scheduler_terminal_idx == new_terminal_idx) {
         page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
+        uservid_page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
+
         flush_tlb();
     }
 

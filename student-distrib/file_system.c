@@ -7,19 +7,6 @@ uint8_t elf[ELF_SIZE] = {0x7f, 0x45, 0x4c, 0x46};
 
 boot_block_t* file_system = NULL;
 
-/* file_system_init
- *   DESCRIPTION: Loads the address of module 0 into file system pointer
- *    
- *   INPUTS: uint32_t * address : address of module 0
- *   OUTPUTS: none
- *   RETURN VALUE: void
- *   SIDE EFFECTS: Initalizes the starting address of file system
- */
-void file_system_init(uint32_t * address) {
-    // init file systems by loading the address of module 0
-    file_system = (boot_block_t *) address;
-}
-
 /* read_dentry_by_name
  *   DESCRIPTION: Tries to search for the right dentry based on the file name.
  *                Copies file name, type, and inode into dentry struct if found

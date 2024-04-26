@@ -42,9 +42,11 @@ void scheduler() {
 
     if (scheduler_terminal_idx == screen_terminal_idx) {
         page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX;
+        uservid_page_table[0].base_address = VID_MEM_INDEX;
         set_cursor(current_terminal_state->cursor_x, current_terminal_state->cursor_y);
     } else {
         page_table[VID_MEM_INDEX].base_address = VID_MEM_INDEX + (scheduler_terminal_idx + 1);
+        uservid_page_table[0].base_address = VID_MEM_INDEX + (scheduler_terminal_idx + 1);
     }
 
     flush_tlb();
