@@ -206,7 +206,7 @@ int32_t execute(const uint8_t *command) {
     get_scheduler_pcb()->fds[0].functions = make_stdin_fops();
     get_scheduler_pcb()->fds[0].flags = FD_USED;
 
-    // Set FD 1 to stdin
+    // Set FD 1 to stdout
     get_scheduler_pcb()->fds[1].functions = make_stdout_fops();
     get_scheduler_pcb()->fds[1].flags = FD_USED;
 
@@ -408,7 +408,6 @@ int32_t getargs(uint8_t *buf, int32_t nbytes) {
     pcb_t *pcb = get_scheduler_pcb();
 
     if (buf == NULL || pcb->args[0] == '\0') {
-        sti();
         return -1;
     }
 
