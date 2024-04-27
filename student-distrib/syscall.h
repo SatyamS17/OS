@@ -49,8 +49,6 @@ typedef struct pcb {
     uint32_t ebp_execute;
     uint32_t ebp_scheduler;
 
-    volatile uint32_t rtc_interrupt_counter;           //counter for number of interrupts in a time interval
-
     // Argument passed into shell
     uint8_t args[BUFFER_SIZE];
 

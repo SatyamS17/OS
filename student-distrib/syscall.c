@@ -36,15 +36,12 @@ int32_t halt(uint8_t status) {
 
     /* Check if trying to exit base shell */
     if (get_scheduler_pcb()->parent_pcb == NULL) {
-        // // Clear base shell PID
-        // pids[get_scheduler_pcb()->pid] = 0;
-        // curr_pcb = NULL;
-        
-        // sti();
-        // // Call shell again
-        // execute((uint8_t *) "shell");
-        
-        return 0;
+        // Clear base shell PID
+        pids[get_scheduler_pcb()->pid] = 0;
+        terminal_get_state(scheduler_terminal_idx)->curr_pcb = NULL;
+
+        sti();
+        execute((uint8_t * ) "shell");
     }
 
     /* Restore parent paging */
@@ -271,6 +268,7 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
     if (pcb->fds[fd].functions.read == NULL) {
         return -1;
     }
+
     //return the number of bytes read
     uint32_t val = pcb->fds[fd].functions.read(fd, buf, nbytes);
     return val;
@@ -285,21 +283,26 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
  *   SIDE EFFECTS: Writes to a buffer given the numb
  */
 int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
+    cli();
     pcb_t *pcb = get_scheduler_pcb();
 
     // check for invalid arguments
     if (fd < 0 || fd >= MAX_OPEN_FILES
        || buf == NULL || nbytes < 0
        || pcb->fds[fd].flags == FD_AVAIL) {
+        sti();
         return -1;
     }
 
     // check if the function is null}
     if (pcb->fds[fd].functions.write == NULL) {
+        sti();
         return -1;
     }
     // return the number of bytes read
-    return pcb->fds[fd].functions.write(fd,buf,nbytes);
+    uint32_t val = pcb->fds[fd].functions.write(fd,buf,nbytes);
+    sti();
+    return val;
 }
 
 /* int32_t open(const uint8_t* filename)
@@ -400,6 +403,7 @@ int32_t getargs(uint8_t* buf, int32_t nbytes) {
     pcb_t *pcb = get_scheduler_pcb();
 
     if (buf == NULL || pcb->args[0] == '\0') {
+        sti();
         return -1;
     }
 
@@ -414,11 +418,14 @@ int32_t getargs(uint8_t* buf, int32_t nbytes) {
 */
 int32_t vidmap(uint8_t** screen_start) {
     // check for garbage values?
-    if(screen_start == NULL) {return -1;}
+    if(screen_start == NULL) {
+        return -1;
+    }
 
     // make sure it falls under the user space
-    if((uint32_t)screen_start < USER_ADDRESS || 
-    (uint32_t)screen_start > (USER_ADDRESS + FOURMB_BITS)) {return -1;}
+    if((uint32_t)screen_start < USER_ADDRESS || (uint32_t)screen_start > (USER_ADDRESS + FOURMB_BITS)) {
+        return -1;
+    }
 
     clear();
     

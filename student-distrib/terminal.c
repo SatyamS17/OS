@@ -28,6 +28,9 @@ void terminal_init(void) {
         terminals[i].kb_buffer.data_available = 0;
         terminals[i].cursor_x = 0;
         terminals[i].cursor_y = 0;
+        terminals[i].rtc_interrupt_flag = 0;
+        terminals[i].rtc_interrupt_counter = 0;
+        terminals[i].curr_pcb = NULL;
     }
 
     set_screen_xy(&terminals[0].cursor_x, &terminals[0].cursor_y);

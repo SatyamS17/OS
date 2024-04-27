@@ -1,9 +1,11 @@
 #include "rtc.h"
+
 #include "i8259.h"
 #include "lib.h"
 #include "scheduling.h"
 #include "syscall.h"
 #include "terminal.h"
+
 #define RTC_IRQ 8
 #define RTC_IO_PORT 0x70
 #define CMOS_IO_PORT 0x71
@@ -20,8 +22,6 @@
 
 // volatile uint32_t rtc_interrupt_counter = 0;           //counter for number of interrupts in a time interval
 volatile uint32_t rtc_ticks_per_interrupt = INIT_FREQ; //used to track the ticks for the emulated frequency
-volatile uint32_t rtc_interrupt_flag = 0;              //used to indicate a virtual RTC interrupt has occured
-uint8_t rtc_used[NUM_TERMINALS] = {0,0,0};             // used to check if the rtc is being used in the terminal
 
 /* void rtc_init(void)
  * Inputs: void
@@ -57,17 +57,12 @@ void rtc_handler_base(void) {
     // loop through each process using rtc to increment counter
     int i;
     for(i = 0; i < NUM_TERMINALS; i++) {
-        // check if the process is using rtc
-        if(rtc_used[i] != 0) {
-            terminal_get_state(i)->curr_pcb->rtc_interrupt_counter++;
+        terminal_get_state(i)->rtc_interrupt_counter++;
 
-            if (terminal_get_state(i)->curr_pcb->rtc_interrupt_counter >= rtc_ticks_per_interrupt){ 
-                rtc_interrupt_flag = 1; 
-                terminal_get_state(i)->curr_pcb->rtc_interrupt_counter = 0;
-            }
+        if (terminal_get_state(i)->rtc_interrupt_counter >= rtc_ticks_per_interrupt){ 
+            terminal_get_state(i)->rtc_interrupt_flag = 1; 
+            terminal_get_state(i)->rtc_interrupt_counter = 0;
         }
-
-
     }
 
     send_eoi(RTC_IRQ); 
@@ -104,13 +99,11 @@ int32_t rtc_close(int32_t fd){
 * Function: Waits for an interrupt to be raised
 */ 
 
-int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes){
-    rtc_interrupt_flag = 0; 
-    while(1){
-        if(rtc_interrupt_flag == 1){
-            break;
-        }
-    }
+int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes) {
+    uint8_t idx = scheduler_terminal_idx;
+    terminal_get_state(idx)->rtc_interrupt_flag = 0;
+    while (!terminal_get_state(idx)->rtc_interrupt_flag) { }
+
     return 0;
 } 
 
@@ -123,7 +116,6 @@ int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes){
         return -1;
     } 
 
-    rtc_used[scheduler_terminal_idx] = 1;
     uint32_t freq = *(uint32_t*) buf;
 
     //check that freq is in bounds and is a power of 2

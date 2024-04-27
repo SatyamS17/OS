@@ -13,6 +13,9 @@ typedef struct terminal_state {
     int cursor_x;
     int cursor_y;
 
+    volatile uint8_t rtc_interrupt_flag;
+    volatile uint32_t rtc_interrupt_counter;           //counter for number of interrupts in a time interval
+
     pcb_t *curr_pcb;
 } terminal_state_t;
 
