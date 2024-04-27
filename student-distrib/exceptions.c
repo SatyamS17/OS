@@ -3,13 +3,13 @@
 #include "lib.h"
 #include "syscall.h"
 
-#define EXCEPTION_HANDLER(name, msg)               \
-void name(void) {                                  \
-    clear();                                       \
-    printf(":( encountered an error: " msg "\n");  \
-    get_scheduler_pcb()->exception_occured = 1;    \
-    halt(0);                                       \
-}
+#define EXCEPTION_HANDLER(name, msg)                                                               \
+    void name(void) {                                                                              \
+        clear();                                                                                   \
+        printf(":( encountered an error: " msg "\n");                                              \
+        get_scheduler_pcb()->exception_occured = 1;                                                \
+        halt(0);                                                                                   \
+    }
 
 EXCEPTION_HANDLER(divide_error_exception_handler_base, "divide error exception")
 EXCEPTION_HANDLER(debug_exception_handler_base, "debug exception")

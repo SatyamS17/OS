@@ -4,4 +4,4 @@
 /* Initialize the IDT. */
 extern void init_idt(void);
 
-#endif  /* _IDT_H */
+#endif /* _IDT_H */

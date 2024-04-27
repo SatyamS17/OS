@@ -9,8 +9,6 @@
 uint8_t master_mask; /* IRQs 0-7  */
 uint8_t slave_mask;  /* IRQs 8-15 */
 
-
-
 /* void i8259_init(void)
  * Inputs: void
  * Return Value: N/A
@@ -20,7 +18,7 @@ void i8259_init(void) {
     master_mask = 0xFF;
     slave_mask = 0xFF;
     outb(master_mask, MASTER_8259_PORT + 1); /*+1 to access data*/
-    outb(slave_mask, SLAVE_8259_PORT + 1); /*+1 to access data*/
+    outb(slave_mask, SLAVE_8259_PORT + 1);   /*+1 to access data*/
 
     /*initialize the PIC*/
     outb(ICW1, MASTER_8259_PORT);
@@ -36,18 +34,17 @@ void i8259_init(void) {
     enable_irq(2); /*slave on irq2 of master*/
 }
 
-
 /* void enable_irq(uint32_t irq_num)
  * Inputs: uint32_t irq_num
  * Return Value: N/A
  * Function: Enable (unmask) the specified IRQ */
 void enable_irq(uint32_t irq_num) {
-    if(irq_num < 8){ /*if master PIC*/
+    if (irq_num < 8) { /*if master PIC*/
         master_mask &= ~(1 << irq_num);
         outb(master_mask, MASTER_8259_PORT + 1);
-    }else if(irq_num > 15){/*15 is max num for interrupts*/
+    } else if (irq_num > 15) { /*15 is max num for interrupts*/
         return;
-    }else{
+    } else {
         slave_mask &= ~(1 << (irq_num - 8));
         outb(slave_mask, SLAVE_8259_PORT + 1);
     }
@@ -58,13 +55,12 @@ void enable_irq(uint32_t irq_num) {
  * Return Value: N/A
  * Function: Disable (mask) the specified IRQ */
 void disable_irq(uint32_t irq_num) {
-    if(irq_num < 8){ /*if master PIC*/
+    if (irq_num < 8) { /*if master PIC*/
         master_mask |= (1 << irq_num);
         outb(master_mask, MASTER_8259_PORT + 1);
-    }else if(irq_num > 15){/*15 is max num for interrupts*/
+    } else if (irq_num > 15) { /*15 is max num for interrupts*/
         return;
-    }
-    else{
+    } else {
         slave_mask |= (1 << (irq_num - 8));
         outb(slave_mask, SLAVE_8259_PORT + 1);
     }
@@ -75,13 +71,12 @@ void disable_irq(uint32_t irq_num) {
  * Return Value: N/A
  * Function: Send end-of-interrupt signal for the specified IRQ */
 void send_eoi(uint32_t irq_num) {
-    if(irq_num < 8){ /*if master PIC*/
+    if (irq_num < 8) { /*if master PIC*/
         outb((EOI | irq_num), MASTER_8259_PORT);
-    }else if(irq_num > 15){/*15 is max num for interrupts*/
+    } else if (irq_num > 15) { /*15 is max num for interrupts*/
         return;
-    }else{
+    } else {
         outb((EOI | (irq_num - 8)), SLAVE_8259_PORT);
         outb(EOI | 2, MASTER_8259_PORT); /*also mask master port that holds slave*/
     }
 }
-

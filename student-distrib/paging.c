@@ -1,36 +1,35 @@
 #include "paging.h"
 
-/* 
+/*
  * init_preg
  *   DESCRIPTION: Enables paging by setting appropriate bits in CR0, CR3, adn CR4.
- *          
+ *
  *   INPUTS: int page_dir address
  *   OUTPUTS: none
  *   RETURN VALUE: void
  *   SIDE EFFECTS: Enables paging
- *  
+ *
  */
 
 extern void init_preg(int);
 
-/* 
+/*
  * paging_init
  *   DESCRIPTION: Intializes paging by setting up page directory and table along with
  *              video memory and kernel. Also enables paging by setting appropriate bits.
- *          
+ *
  *   INPUTS: none
  *   OUTPUTS: none
  *   RETURN VALUE: void
  *   SIDE EFFECTS: Intializes paging (video mem and kernel)
- *  
+ *
  */
 
 void paging_init() {
     int i;
 
     // Set default not-present page entries for the directory and table
-    for (i = 0; i < PAGE_NUM; i++)
-    {
+    for (i = 0; i < PAGE_NUM; i++) {
         // init the page directory
         page_dir[i].present = 0;
         page_dir[i].read_write = 1;
@@ -74,14 +73,14 @@ void paging_init() {
     page_dir[0].present = 1;
     page_dir[0].page_size = 0;
     page_dir[0].page_table_address = ((int)page_table) >> ADDRESS_SHIFT;
-    
+
     page_table[VID_MEM_INDEX].present = 1;
 
     // terminal backup video pages
     page_table[VID_MEM1_INDEX].present = 1;
     page_table[VID_MEM2_INDEX].present = 1;
     page_table[VID_MEM3_INDEX].present = 1;
-    
+
     // init kernel by making it present and looking at kernel address
     page_dir[1].present = 1;
     page_dir[1].page_table_address = ((int)KERNEL_ADDRESS) >> ADDRESS_SHIFT;

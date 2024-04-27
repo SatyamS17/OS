@@ -1,14 +1,26 @@
 #include "scheduling.h"
 
-#include "terminal.h"
-#include "paging.h"
 #include "lib.h"
+#include "paging.h"
 #include "syscall.h"
+#include "terminal.h"
 
 uint8_t scheduler_terminal_idx = 0;
 
+/*
+ * scheduler()
+ *   DESCRIPTION: Context switches between terminals in the background when called by the PIT
+ *
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: void
+ *   SIDE EFFECTS: Base case has it execute shell if terminal is empty otherwise context switches in a round robin way.
+ *
+ */
 void scheduler() {
+    // if base case of empty terminal then call execute to initalize temrinal
     if (get_scheduler_pcb() == NULL) {
+        // get the context of the terminal ready
         terminal_state_t *current_terminal_state = terminal_get_state(scheduler_terminal_idx);
         keyboard_set_buffer(&current_terminal_state->kb_buffer);
         set_screen_xy(&current_terminal_state->cursor_x, &current_terminal_state->cursor_y);
@@ -21,10 +33,11 @@ void scheduler() {
         }
 
         flush_tlb();
-        
-        execute((uint8_t * ) "shell");
+
+        execute((uint8_t *)"shell");
     }
 
+    // save terminal context before switching
     register uint32_t ebp asm("ebp");
     get_scheduler_pcb()->ebp_scheduler = ebp;
 
@@ -34,7 +47,7 @@ void scheduler() {
     if (get_scheduler_pcb() == NULL) {
         return;
     }
-    
+
     // switch the vid memory being written
     terminal_state_t *current_terminal_state = terminal_get_state(scheduler_terminal_idx);
     keyboard_set_buffer(&current_terminal_state->kb_buffer);
@@ -52,9 +65,10 @@ void scheduler() {
     flush_tlb();
 
     // update page table
-    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (get_scheduler_pcb()->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
+    page_dir[USER_INDEX].page_table_address =
+        (KERNEL_END + (get_scheduler_pcb()->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
 
-    //save esp0 in the TSS
+    // save esp0 in the TSS
     tss.ss0 = KERNEL_DS;
     tss.esp0 = KERNEL_END - (get_scheduler_pcb()->pid * EIGHTKB_BITS);
 
@@ -66,8 +80,7 @@ void scheduler() {
         leave               \n\
         ret                 \n\
         "
-        :
-        : "r"(saved_ebp)
-        : "ebp"
-    );
+                 :
+                 : "r"(saved_ebp)
+                 : "ebp");
 }
