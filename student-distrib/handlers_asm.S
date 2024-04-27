@@ -32,3 +32,4 @@ link_asm(simd_floating_point_exception_handler, simd_floating_point_exception_ha
 
 link_asm(keyboard_handler, keyboard_handler_base)
 link_asm(rtc_handler, rtc_handler_base)
+link_asm(pit_handler, pit_handler_base)

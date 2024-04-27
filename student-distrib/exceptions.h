@@ -77,4 +77,4 @@ extern void machine_check_exception_handler_base(void);
 extern void simd_floating_point_exception_handler(void);
 extern void simd_floating_point_exception_handler_base(void);
 
-#endif  /* _EXCEPTIONS_H */
+#endif /* _EXCEPTIONS_H */

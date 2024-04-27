@@ -1,70 +1,79 @@
-#include "syscall.h"
 
+#include "syscall.h"
 #include "file_system.h"
 #include "lib.h"
 #include "paging.h"
 #include "rtc.h"
+#include "scheduling.h"
 #include "terminal.h"
 
-/* Pointer to current PCB. */
-pcb_t* curr_pcb = NULL;
-
 /* Array of which PIDs are in use or not (1 or 0). */
-static uint32_t pids[MAXPIDS];
+uint32_t pids[MAXPIDS];
+
+/* pcb_t *get_scheduler_pcb(void)
+ *   DESCRIPTION: gets the currect pcb of the scheduler's current terminal
+ *
+ *   INPUTS: none
+ *   OUTPUTS: pcb_t*
+ *   RETURN VALUE: current pcb
+ */
+pcb_t *get_scheduler_pcb(void) { return terminal_get_state(scheduler_terminal_idx)->curr_pcb; }
 
 /* int32_t halt(uint8_t status)
  *   DESCRIPTION: Ends process and returns context back to parent process.
- * 
+ *
  *   INPUTS: uint8_t status       : the current status passed by execute
  *   OUTPUTS: none
  *   RETURN VALUE: status
  *   SIDE EFFECTS: Returns to parent process
  */
 int32_t halt(uint8_t status) {
+    cli();
+
     // If status = 256, an exception has occured and 256 should be returned from `execute`,
     // but.. status is a uint8_t so 256 wraps to 0.
     //
     // Instead, we manually store a flag of if an exception has occured.
-    uint32_t status_32 = (uint32_t) status;
-    if (curr_pcb->exception_occured) {
+    uint32_t status_32 = (uint32_t)status;
+    if (get_scheduler_pcb()->exception_occured) {
         status_32 = 256;
     }
 
     /* Check if trying to exit base shell */
-    if (curr_pcb->parent_pcb == NULL) {
+    if (get_scheduler_pcb()->parent_pcb == NULL) {
         // Clear base shell PID
-        pids[0] = 0;
-        curr_pcb = NULL;
+        pids[get_scheduler_pcb()->pid] = 0;
+        terminal_get_state(scheduler_terminal_idx)->curr_pcb = NULL;
 
-        // Call shell again
-        const uint8_t cmd[FILENAME_SIZE] = "shell";
-        execute(cmd);
-    
-        return 0;
+        sti();
+        execute((uint8_t *)"shell");
     }
 
     /* Restore parent paging */
-    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->parent_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
+    page_dir[USER_INDEX].page_table_address =
+        (KERNEL_END + (get_scheduler_pcb()->parent_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
     flush_tlb();
 
     /* Clear file descriptors */
     int i;
     for (i = 0; i < MAX_OPEN_FILES; i++) {
-        if (curr_pcb->fds[i].flags == FD_USED) {
+        if (get_scheduler_pcb()->fds[i].flags == FD_USED) {
             close(i);
         }
     }
 
     /* Write parent's process info back to TSS */
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = KERNEL_END - (curr_pcb->parent_pcb->pid * EIGHTKB_BITS);
-    
+    tss.esp0 = KERNEL_END - (get_scheduler_pcb()->parent_pcb->pid * EIGHTKB_BITS);
+
     /* Jump to execute return */
-    uint32_t saved_ebp = curr_pcb->saved_ebp;
+    uint32_t saved_ebp = get_scheduler_pcb()->ebp_execute;
 
     /* Unset current PID in pids and restore curr_pcb */
-    pids[curr_pcb->pid] = 0;
-    curr_pcb = curr_pcb->parent_pcb;
+    pids[get_scheduler_pcb()->pid] = 0;
+    terminal_get_state(scheduler_terminal_idx)->curr_pcb = get_scheduler_pcb()->parent_pcb;
+
+    sti();
 
     /* Switch back to `execute`'s stack by setting ebp to saved_ebp */
     // Return from execute function
@@ -75,23 +84,24 @@ int32_t halt(uint8_t status) {
         leave               \n\
         ret                 \n\
         "
-        :
-        : "r"(saved_ebp), "r"(status_32)
-    );
+                 :
+                 : "r"(saved_ebp), "r"(status_32)
+                 : "ebp", "esp", "eax");
 
     return -1;
 }
 
 /* int32_t execute(const uint8_t* command)
- *   DESCRIPTION: Executes a new process by setting up iret, paging, and other paramaters. Checks to 
+ *   DESCRIPTION: Executes a new process by setting up iret, paging, and other paramaters. Checks to
  *                 make sure that the process can start and loads program into memory.
- * 
+ *
  *   INPUTS: const uint8_t* command       : the command passed in terminal
  *   OUTPUTS: none
  *   RETURN VALUE: status of the execute
  *   SIDE EFFECTS: Starts a process if its able to
  */
-int32_t execute(const uint8_t* command) {
+int32_t execute(const uint8_t *command) {
+    cli();
     int i;
 
     /* Parse args */
@@ -102,7 +112,9 @@ int32_t execute(const uint8_t* command) {
 
     // Skip any spaces at the start
     int command_idx = 0;
-    while (command[command_idx] == ' ') { command_idx++; }
+    while (command[command_idx] == ' ') {
+        command_idx++;
+    }
 
     // Get the command
     for (i = 0; i < BUFFER_SIZE - 1; i++, command_idx++) {
@@ -112,7 +124,9 @@ int32_t execute(const uint8_t* command) {
         file_name[i] = command[command_idx];
     }
 
-    while (command[command_idx] == ' ') { command_idx++; }
+    while (command[command_idx] == ' ') {
+        command_idx++;
+    }
 
     for (i = 0; i < BUFFER_SIZE - 1; i++, command_idx++) {
         if (command[command_idx] == '\0') {
@@ -124,41 +138,35 @@ int32_t execute(const uint8_t* command) {
     /* Check File Validity */
     dentry_t dentry;
 
-    //file doesn't exist check 
+    // file doesn't exist check
     if (read_dentry_by_name(file_name, &dentry) == -1) {
         printf("Error: Command `%s` doesn't exist\n", file_name);
+        sti();
         return -1;
     }
 
-    //check if we can read 4 bytes  
+    // check if we can read 4 bytes
     uint8_t elf_buffer[ELF_SIZE];
-    
+
     if (read_data(dentry.inode, 0, elf_buffer, ELF_SIZE) == -1) {
         printf("Error: Unable to read first 4 bytes\n");
+        sti();
         return -1;
     }
 
-    //check if executable  
-    if (elf_buffer[0] != ELF_MN_1 || 
-        elf_buffer[1] != ELF_MN_2 ||
-        elf_buffer[2] != ELF_MN_3 || 
-        elf_buffer[3] != ELF_MN_4) { 
+    // check if executable
+    if (elf_buffer[0] != ELF_MN_1 || elf_buffer[1] != ELF_MN_2 || elf_buffer[2] != ELF_MN_3 ||
+        elf_buffer[3] != ELF_MN_4) {
         printf("Error: `%s` is not an executable\n", file_name);
+        sti();
         return -1;
     }
 
     /* Find PID */
-    int32_t old_pid;
-    if (curr_pcb == NULL) {
-        old_pid = -1;
-    } else {
-        old_pid = curr_pcb->pid;
-    }
-    
     int pid = -1;
-    for (i = 0; i < MAXPIDS; i++){
+    for (i = 0; i < MAXPIDS; i++) {
         // select a valid PID
-        if (pids[i] == 0){
+        if (pids[i] == 0) {
             pids[i] = 1;
             pid = i;
             break;
@@ -167,61 +175,68 @@ int32_t execute(const uint8_t* command) {
 
     if (pid == -1) {
         printf("Error: All PIDs used\n");
+        sti();
         return -1;
     }
 
-    //update parent and current pcb
-    pcb_t* parent_pcb = curr_pcb;
-    curr_pcb = (pcb_t*) (KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
-    curr_pcb->pid = pid;
-    curr_pcb->parent_pcb = parent_pcb;
-    memcpy(curr_pcb->args, args, sizeof(args));
-    curr_pcb->exception_occured = 0;
+    // update parent and current pcb
+    terminal_state_t *current_terminal_state = terminal_get_state(scheduler_terminal_idx);
+
+    pcb_t *curr_pcb = (pcb_t *)(KERNEL_END - (EIGHTKB_BITS * (pid + 1)));
+    pcb_t *parent_pcb = current_terminal_state->curr_pcb;
+    current_terminal_state->curr_pcb = curr_pcb;
+
+    get_scheduler_pcb()->pid = pid;
+    get_scheduler_pcb()->parent_pcb = parent_pcb;
+    memcpy(get_scheduler_pcb()->args, args, sizeof(args));
+    get_scheduler_pcb()->exception_occured = 0;
+
+    // Clear all FDs
+    for (i = 0; i < MAX_OPEN_FILES; i++) {
+        get_scheduler_pcb()->fds[i].functions.open = NULL;
+        get_scheduler_pcb()->fds[i].functions.close = NULL;
+        get_scheduler_pcb()->fds[i].functions.read = NULL;
+        get_scheduler_pcb()->fds[i].functions.write = NULL;
+        get_scheduler_pcb()->fds[i].inode = 0;
+        get_scheduler_pcb()->fds[i].pos = 0;
+        get_scheduler_pcb()->fds[i].flags = FD_AVAIL;
+    }
+
+    // Set FD 0 to stdin
+    get_scheduler_pcb()->fds[0].functions = make_stdin_fops();
+    get_scheduler_pcb()->fds[0].flags = FD_USED;
+
+    // Set FD 1 to stdin
+    get_scheduler_pcb()->fds[1].functions = make_stdout_fops();
+    get_scheduler_pcb()->fds[1].flags = FD_USED;
 
     /* Setup Paging */
 
     // make virtual mem map to right physical address
-    page_dir[USER_INDEX].page_table_address = (KERNEL_END + (curr_pcb->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
+    page_dir[USER_INDEX].page_table_address =
+        (KERNEL_END + (get_scheduler_pcb()->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
+
     flush_tlb();
-        
+
     /* Load file into memory */
 
     // know it's an executable now copy to physical address
-    uint8_t* program_location = (uint8_t*) (USER_ADDRESS + USER_OFFSET);
-    uint32_t file_size = ((inodes_t *)((uint8_t *)file_system + ((dentry.inode + 1) * (BLOCK_SIZE))))->length;
+    uint8_t *program_location = (uint8_t *)(USER_ADDRESS + USER_OFFSET);
+    uint32_t file_size =
+        ((inodes_t *)((uint8_t *)file_system + ((dentry.inode + 1) * (BLOCK_SIZE))))->length;
     read_data(dentry.inode, 0, program_location, file_size);
 
-    uint32_t eip = *((uint32_t*) (program_location + EIP_OFFSET));
-
-    /* Create pcb and clear fds */
-
-    // Clear all FDs
-    for (i = 0; i < MAX_OPEN_FILES; i++) {
-        curr_pcb->fds[i].functions.open = NULL;
-        curr_pcb->fds[i].functions.close = NULL;
-        curr_pcb->fds[i].functions.read = NULL;
-        curr_pcb->fds[i].functions.write = NULL;
-        curr_pcb->fds[i].inode = 0;
-        curr_pcb->fds[i].pos = 0;
-        curr_pcb->fds[i].flags = FD_AVAIL;
-    }
-
-    // Set FD 0 to stdin
-    curr_pcb->fds[0].functions = make_stdin_fops();
-    curr_pcb->fds[0].flags = FD_USED;
-
-    // Set FD 1 to stdin
-    curr_pcb->fds[1].functions = make_stdout_fops();
-    curr_pcb->fds[1].flags = FD_USED;
+    uint32_t eip = *((uint32_t *)(program_location + EIP_OFFSET));
 
     /* Prepare For Context Switch */
     // save current ebp
-    register uint32_t saved_ebp asm("ebp");
-    curr_pcb->saved_ebp = saved_ebp;
+    register uint32_t ebp asm("ebp");
+    get_scheduler_pcb()->ebp_execute = ebp;
 
     // modify esp0 and ss0 in TSS
     tss.ss0 = KERNEL_DS;
-    tss.esp0 = KERNEL_END - (curr_pcb->pid * EIGHTKB_BITS);
+    tss.esp0 = KERNEL_END - (get_scheduler_pcb()->pid * EIGHTKB_BITS);
+    sti();
 
     // push IRET context on the the correct order and call iret
     asm volatile("    \n\
@@ -232,71 +247,78 @@ int32_t execute(const uint8_t* command) {
         pushl %3      \n\
         iret          \n\
         "
-        :
-        : "r" (USER_DS), "r" (USER_ADDRESS + FOURMB_BITS), "r" (USER_CS), "r" (eip)
-        : "memory"
-    );
+                 :
+                 : "r"(USER_DS), "r"(USER_ADDRESS + FOURMB_BITS), "r"(USER_CS), "r"(eip)
+                 : "cc");
 
     return 0;
 }
 
-
 /* int32_t read(int32_t fd, void* buf, int32_t nbytes)
-* Inputs: int32_t fd - file descriptor
-*         void* buf - buffer
-*          int32_t nbytes - number of bytes to read
-* Return Value: int32_t -> number of bytes read
-* Function: reads data in from file and buffer
-*/
-int32_t read(int32_t fd, void* buf, int32_t nbytes) {
+ * Inputs: int32_t fd - file descriptor
+ *         void* buf - buffer
+ *          int32_t nbytes - number of bytes to read
+ * Return Value: int32_t -> number of bytes read
+ * Function: reads data in from file and buffer
+ */
+int32_t read(int32_t fd, void *buf, int32_t nbytes) {
+    pcb_t *pcb = get_scheduler_pcb();
+
     // check for invalid arguments
-    if(fd < 0 || fd >= MAX_OPEN_FILES
-       || buf == NULL || nbytes < 0
-       || curr_pcb->fds[fd].flags == FD_AVAIL) {
+    if (fd < 0 || fd >= MAX_OPEN_FILES || buf == NULL || nbytes < 0 ||
+        pcb->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
 
     // read if possible
-    if (curr_pcb->fds[fd].functions.read == NULL) {
+    if (pcb->fds[fd].functions.read == NULL) {
         return -1;
     }
-    //return the number of bytes read
-    uint32_t val = curr_pcb->fds[fd].functions.read(fd, buf, nbytes);
+
+    // return the number of bytes read
+    uint32_t val = pcb->fds[fd].functions.read(fd, buf, nbytes);
     return val;
 }
 
 /* int32_t write(int32_t fd, void* buf, int32_t nbytes)
  *   Inputs:    int32_t fd - file descriptor
  *              void* buf - buffer
-*               int32_t nbytes - number of bytes to write
+ *               int32_t nbytes - number of bytes to write
  *   OUTPUTS: none
  *   RETURN VALUE: -1 if not valid or the numbe number of bytes to writeytes written
  *   SIDE EFFECTS: Writes to a buffer given the numb
  */
-int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
+int32_t write(int32_t fd, const void *buf, int32_t nbytes) {
+    cli();
+    pcb_t *pcb = get_scheduler_pcb();
+
     // check for invalid arguments
-    if (fd < 0 || fd >= MAX_OPEN_FILES
-       || buf == NULL || nbytes < 0
-       || curr_pcb->fds[fd].flags == FD_AVAIL) {
+    if (fd < 0 || fd >= MAX_OPEN_FILES || buf == NULL || nbytes < 0 ||
+        pcb->fds[fd].flags == FD_AVAIL) {
+        sti();
         return -1;
     }
 
     // check if the function is null}
-    if (curr_pcb->fds[fd].functions.write == NULL) {
+    if (pcb->fds[fd].functions.write == NULL) {
+        sti();
         return -1;
     }
     // return the number of bytes read
-    return curr_pcb->fds[fd].functions.write(fd,buf,nbytes);
+    uint32_t val = pcb->fds[fd].functions.write(fd, buf, nbytes);
+    sti();
+    return val;
 }
 
 /* int32_t open(const uint8_t* filename)
-* Inputs: const uint8_t* filename - name of file to open
-* Return Value: int32_t -> file descriptor index
-* Function: opens a file
-*/
-int32_t open(const uint8_t* filename) {
+ * Inputs: const uint8_t* filename - name of file to open
+ * Return Value: int32_t -> file descriptor index
+ * Function: opens a file
+ */
+int32_t open(const uint8_t *filename) {
+    pcb_t *pcb = get_scheduler_pcb();
 
-    //check if the file is valid
+    // check if the file is valid
     dentry_t dentry;
     if (read_dentry_by_name(filename, &dentry) != 0) {
         return -1;
@@ -305,7 +327,7 @@ int32_t open(const uint8_t* filename) {
     // Find open file descriptor index
     int fd_idx;
     for (fd_idx = 0; fd_idx < MAX_OPEN_FILES; fd_idx++) {
-        if (curr_pcb->fds[fd_idx].flags == FD_AVAIL) {
+        if (pcb->fds[fd_idx].flags == FD_AVAIL) {
             break;
         }
     }
@@ -315,107 +337,117 @@ int32_t open(const uint8_t* filename) {
         return -1;
     }
 
-    //copy file data
-    curr_pcb->fds[fd_idx].inode = dentry.inode;
-    curr_pcb->fds[fd_idx].pos = 0;
-    curr_pcb->fds[fd_idx].flags = FD_USED;
+    // copy file data
+    pcb->fds[fd_idx].inode = dentry.inode;
+    pcb->fds[fd_idx].pos = 0;
+    pcb->fds[fd_idx].flags = FD_USED;
 
     // switch to the right function call given the type
     switch (dentry.file_type) {
-    case 0:  // RTC
-        curr_pcb->fds[fd_idx].functions = make_rtc_fops();
+    case 0: // RTC
+        pcb->fds[fd_idx].functions = make_rtc_fops();
         break;
-    case 1:  // directory
-        curr_pcb->fds[fd_idx].functions = make_dir_fops();
+    case 1: // directory
+        pcb->fds[fd_idx].functions = make_dir_fops();
         break;
-    case 2:  // regular file
-        curr_pcb->fds[fd_idx].functions = make_file_fops();
+    case 2: // regular file
+        pcb->fds[fd_idx].functions = make_file_fops();
         break;
     default:
         return -1;
     }
 
     // if valid then open the file
-    if (curr_pcb->fds[fd_idx].functions.open != NULL) {
-        curr_pcb->fds[fd_idx].functions.open(filename);
+    if (pcb->fds[fd_idx].functions.open != NULL) {
+        pcb->fds[fd_idx].functions.open(filename);
     }
 
     return fd_idx;
-} 
+}
 
 /* int32_t close(int32_t fd)
-* Inputs: int32_t fd - name of file to open
-* Return Value: int32_t -> success/fail
-* Function: closes a file and sets it available
-*/
+ * Inputs: int32_t fd - name of file to open
+ * Return Value: int32_t -> success/fail
+ * Function: closes a file and sets it available
+ */
 int32_t close(int32_t fd) {
+    pcb_t *pcb = get_scheduler_pcb();
+
     // check for valid arguments
-    if(fd < 0 || fd >= MAX_OPEN_FILES || curr_pcb->fds[fd].flags == FD_AVAIL) {
+    if (fd < 0 || fd >= MAX_OPEN_FILES || pcb->fds[fd].flags == FD_AVAIL) {
         return -1;
     }
 
-    if (curr_pcb->fds[fd].functions.close == NULL) {
+    if (pcb->fds[fd].functions.close == NULL) {
         return 0;
     }
 
-    //close the file
-    int32_t ret = curr_pcb->fds[fd].functions.close(fd);
-    
+    // close the file
+    int32_t ret = pcb->fds[fd].functions.close(fd);
+
     if (ret != -1) {
-        curr_pcb->fds[fd].functions.open = NULL;
-        curr_pcb->fds[fd].functions.close = NULL;
-        curr_pcb->fds[fd].functions.read = NULL;
-        curr_pcb->fds[fd].functions.write = NULL;
-        curr_pcb->fds[fd].inode = 0;
-        curr_pcb->fds[fd].pos = 0;
-        curr_pcb->fds[fd].flags = FD_AVAIL;
+        pcb->fds[fd].functions.open = NULL;
+        pcb->fds[fd].functions.close = NULL;
+        pcb->fds[fd].functions.read = NULL;
+        pcb->fds[fd].functions.write = NULL;
+        pcb->fds[fd].inode = 0;
+        pcb->fds[fd].pos = 0;
+        pcb->fds[fd].flags = FD_AVAIL;
     }
 
     return ret;
 }
 
 /* int32_t getargs(uint8_t* buf, int32_t nbytes)
-* Inputs: uint8_t* buf - buffer to write to
-*         int32_t nbytes - number of bytes to write
-* Return Value: int32_t -> success/fail
-* Function: copies shell arguments into given buffer
-*/
-int32_t getargs(uint8_t* buf, int32_t nbytes) {
-    if (buf == NULL || curr_pcb->args[0] == '\0') {
+ * Inputs: uint8_t* buf - buffer to write to
+ *         int32_t nbytes - number of bytes to write
+ * Return Value: int32_t -> success/fail
+ * Function: copies shell arguments into given buffer
+ */
+int32_t getargs(uint8_t *buf, int32_t nbytes) {
+    pcb_t *pcb = get_scheduler_pcb();
+
+    if (buf == NULL || pcb->args[0] == '\0') {
+        sti();
         return -1;
     }
 
-    strncpy((int8_t*) buf, (const int8_t*) curr_pcb->args, nbytes);
+    strncpy((int8_t *)buf, (const int8_t *)pcb->args, nbytes);
     return 0;
 }
 
 /* int32_t vidmap(uint8_t** screen_start)
-* Inputs: uint8_t** screen_start - pointer to vid memory address
-* Return Value: 0 if worked or -1 if failed
-* Function: Saves vid mem into the screen start pointer
-*/
-int32_t vidmap(uint8_t** screen_start) {
-    
+ * Inputs: uint8_t** screen_start - pointer to vid memory address
+ * Return Value: 0 if worked or -1 if failed
+ * Function: Saves vid mem into the screen start pointer
+ */
+int32_t vidmap(uint8_t **screen_start) {
     // check for garbage values?
-    if(screen_start == NULL) {return -1;}
+    if (screen_start == NULL) {
+        return -1;
+    }
 
     // make sure it falls under the user space
-    if((uint32_t)screen_start < USER_ADDRESS || 
-    (uint32_t)screen_start > (USER_ADDRESS + FOURMB_BITS)) {return -1;}
-    
+    if ((uint32_t)screen_start < USER_ADDRESS ||
+        (uint32_t)screen_start > (USER_ADDRESS + FOURMB_BITS)) {
+        return -1;
+    }
+
+    clear();
+
     // update value in screen start to point to video mem
-    *screen_start = (uint8_t*)VIRTUAL_VID_MEM;
+    *screen_start = (uint8_t *)VIRTUAL_VID_MEM;
 
     return 0;
 }
 
 // EC TO DO LATER!
-int32_t set_handler(int32_t signum, void* handler_address) {
+int32_t set_handler(int32_t signum, void *handler_address) {
     printf("set_handler called - not implemented\n");
     return -1;
 }
 
 int32_t sigreturn(void) {
-    printf("sigreturn calle - not implemented\n");
+    printf("sigreturn called - not implemented\n");
     return -1;
 }

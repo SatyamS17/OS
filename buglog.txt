@@ -131,3 +131,41 @@ Fix: If statment in read_data would make it break out of the loop so the read_co
 Bug: syserr test #5 didn't work (didn't print anything).
 
 Fix: Closing the stdin file descriptor accidentally marked the fd as available, stopping anything from printing.
+
+Checkpoint 5:
+
+1)
+
+Bug: Cursors were not updated correctly while switching terminals
+
+Fix: Needed to create a setter and getter function for saving the current cursor and restoring the correct position.
+
+2)
+
+Bug: If shell was running in terminal 1, typing characters and pressing enter in terminal 2 would write to terminal 1's buffer.
+
+Fix: Fixed `terminal_read` to read from the terminal it was initially called from, not the current terminal.
+
+3) 
+
+Bug: Sometimes switching terminals super fast with pingpong, counter, and fish runnning would have fish shown in the pingpong terminal and so on.
+
+Fix: Adding cli and sti to write in syscall helped prevent this from happening since writes would have to in order and not at the same time.
+
+4) 
+
+Bug: Pingpong was very slow.
+
+Fix: Implementing a rtc counter and flag for each terminal over having a global variable.
+
+5)
+
+Bug: Exiting base shells would cause page faults.
+
+Fix: Previously assumed base shell was only PID 0, needed to change to the PID of the current PCB.
+
+6)
+
+Bug: Page fault when a process finishes and calls halt.
+
+Fix: Needed to store a separate saved EBP in a process's PCB for execute and scheduler.
