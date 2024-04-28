@@ -10,7 +10,6 @@
 #define DIR_ENTRY_RESERVED 24
 #define BOOT_BLOCK_RESERVED 52
 #define DIR_ENTRIES_NUM 63
-#define ELF_SIZE 4
 
 /* File descriptor flags */
 #define FD_USED 1  // FD in use

@@ -20,10 +20,8 @@
 #define MIN_RATE 3
 #define MAX_RATE 15
 
-// volatile uint32_t rtc_interrupt_counter = 0;           //counter for number of interrupts in a
-// time interval
-volatile uint32_t rtc_ticks_per_interrupt =
-    INIT_FREQ; // used to track the ticks for the emulated frequency
+// used to track the ticks for the emulated frequency
+volatile uint32_t rtc_ticks_per_interrupt = INIT_FREQ;
 
 /* void rtc_init(void)
  * Inputs: void
@@ -77,7 +75,6 @@ void rtc_handler_base(void) {
  * Output: Returns 0
  * Function: Initializes RTC frequency to 2 Hz
  */
-
 int32_t rtc_open(const uint8_t *filename) {
     rtc_ticks_per_interrupt = INIT_FREQ;
     return 0;
@@ -89,7 +86,6 @@ int32_t rtc_open(const uint8_t *filename) {
  * Output: Returns 0
  * Function: Closes the RTC
  */
-
 int32_t rtc_close(int32_t fd) { return 0; }
 
 /*
@@ -98,7 +94,6 @@ int32_t rtc_close(int32_t fd) { return 0; }
  * Output: Returns 0
  * Function: Waits for an interrupt to be raised
  */
-
 int32_t rtc_read(int32_t fd, void *buf, int32_t nbytes) {
     uint8_t idx = scheduler_terminal_idx;
     terminal_get_state(idx)->rtc_interrupt_flag = 0;
@@ -109,7 +104,6 @@ int32_t rtc_read(int32_t fd, void *buf, int32_t nbytes) {
 }
 
 int32_t rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
-
     if (buf == NULL) { // check for valid input buffer
         return -1;
     }
@@ -134,7 +128,6 @@ int32_t rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
  * Output: Success or Fail
  * Function: Change the frequency of the RTC
  */
-
 int32_t rtc_set_frequency(int32_t freq) {
     unsigned char prev;
 
@@ -162,7 +155,6 @@ int32_t rtc_set_frequency(int32_t freq) {
  * Output: Returns the converted frequency
  * Function: Convert frequency to log base 2
  */
-
 int32_t rtc_get_log2(int32_t freq) {
     int32_t bits = 0;
 

@@ -15,7 +15,6 @@ uint8_t scheduler_terminal_idx = 0;
  *   OUTPUTS: none
  *   RETURN VALUE: void
  *   SIDE EFFECTS: Base case has it execute shell if terminal is empty otherwise context switches in a round robin way.
- *
  */
 void scheduler() {
     // if base case of empty terminal then call execute to initalize temrinal
@@ -62,11 +61,11 @@ void scheduler() {
         uservid_page_table[0].base_address = VID_MEM_INDEX + (scheduler_terminal_idx + 1);
     }
 
-    flush_tlb();
-
     // update page table
     page_dir[USER_INDEX].page_table_address =
         (KERNEL_END + (get_scheduler_pcb()->pid * FOURMB_BITS)) >> ADDRESS_SHIFT;
+
+    flush_tlb();
 
     // save esp0 in the TSS
     tss.ss0 = KERNEL_DS;

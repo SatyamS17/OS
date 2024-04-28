@@ -16,27 +16,12 @@
 /* Max number of processes */
 #define MAXPIDS 6
 
-/* ELF magic constants */
-#define ELF_MN_1 0x7f
-#define ELF_MN_2 0x45
-#define ELF_MN_3 0x4c
-#define ELF_MN_4 0x46
-
-/* Offset for program image */
-#define USER_OFFSET 0x48000
-
 #define KERNEL_END 0x800000
 #define EIGHTKB_BITS (FOURKB_BITS * 2)
 #define FOURMB_BITS 0x400000
 
-/* Offset to find EIP in program image */
-#define EIP_OFFSET 24
-
 /* Max open file descriptors for a process */
 #define MAX_OPEN_FILES 8
-
-/* Use to get the base address */
-#define ADDRESS_SHIFT 12
 
 /* PCB Struct */
 typedef struct pcb {

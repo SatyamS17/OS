@@ -8,17 +8,24 @@
 
 #define NUM_TERMINALS 3
 
+/* State specific to a terminal. */
 typedef struct terminal_state {
+    /* Buffer containing keyboard text. */
     keyboard_buffer_t kb_buffer;
+
+    /* Coordinate of cursor on screen. */
     int cursor_x;
     int cursor_y;
 
+    /* RTC flag/counter */
     volatile uint8_t rtc_interrupt_flag;
-    volatile uint32_t rtc_interrupt_counter; // counter for number of interrupts in a time interval
+    volatile uint32_t rtc_interrupt_counter;
 
+    /* Pointer to this terminal's curernt process's PCB. */
     pcb_t *curr_pcb;
 } terminal_state_t;
 
+/* Index of the terminal currently shown on screen. */
 extern uint8_t screen_terminal_idx;
 
 extern terminal_state_t *terminal_get_state(uint8_t idx);

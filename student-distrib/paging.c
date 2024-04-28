@@ -1,5 +1,8 @@
 #include "paging.h"
 
+/* Starting address given to us in documentation*/
+#define KERNEL_ADDRESS 0x400000
+
 /*
  * init_preg
  *   DESCRIPTION: Enables paging by setting appropriate bits in CR0, CR3, adn CR4.
@@ -8,9 +11,7 @@
  *   OUTPUTS: none
  *   RETURN VALUE: void
  *   SIDE EFFECTS: Enables paging
- *
  */
-
 extern void init_preg(int);
 
 /*
@@ -22,9 +23,7 @@ extern void init_preg(int);
  *   OUTPUTS: none
  *   RETURN VALUE: void
  *   SIDE EFFECTS: Intializes paging (video mem and kernel)
- *
  */
-
 void paging_init() {
     int i;
 

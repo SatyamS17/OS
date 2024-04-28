@@ -1,11 +1,25 @@
-
 #include "syscall.h"
+
 #include "file_system.h"
 #include "lib.h"
 #include "paging.h"
 #include "rtc.h"
 #include "scheduling.h"
 #include "terminal.h"
+
+#define ELF_SIZE 4
+
+/* ELF magic constants */
+#define ELF_MN_1 0x7f
+#define ELF_MN_2 0x45
+#define ELF_MN_3 0x4c
+#define ELF_MN_4 0x46
+
+/* Offset for program image */
+#define USER_OFFSET 0x48000
+
+/* Offset to find EIP in program image */
+#define EIP_OFFSET 24
 
 /* Array of which PIDs are in use or not (1 or 0). */
 uint32_t pids[MAXPIDS];
